@@ -1,0 +1,50 @@
+{
+  "name": "sansheng-liubu",
+  "version": "1.0.0",
+  "description": "基于「三省六部制」的极简高质跨环境 AI 研发工作流引擎 (Vue 3 + .NET 8 / Core 3.1 深度优化)",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "sansheng": "./bin/cli.js",
+    "sansheng-worker": "./bin/worker.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TwotwoPiggy/sansheng-liubu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TwotwoPiggy/sansheng-liubu/issues"
+  },
+  "homepage": "https://github.com/TwotwoPiggy/sansheng-liubu#readme",
+  "scripts": {
+    "start": "node ./bin/cli.js",
+    "test": "node ./bin/cli.js map",
+    "release": "node scripts/release.mjs",
+    "release:dry-run": "node scripts/release.mjs --dry-run",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "files": [
+    "bin",
+    "src",
+    "SKILL.md",
+    "README.md",
+    "sansheng.config.json",
+    "LITE_DEV_WORKFLOW_SPEC.md"
+  ],
+  "keywords": [
+    "ai-agent",
+    "workflow",
+    "sdlc",
+    "subagent",
+    "codebase-map",
+    "lsp",
+    "dotnet",
+    "vue3",
+    "yongle-dadian"
+  ],
+  "author": "Lemony & Antigravity",
+  "license": "MIT"
+}

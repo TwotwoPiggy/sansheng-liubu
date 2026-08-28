@@ -1,0 +1,15 @@
+{
+  "models": {
+    "architect_tier": "gemini-3.7-flash",
+    "worker_tier": "deepseek-v3",
+    "fallback_tier": "gemini-3.7-flash"
+  },
+  "escalation": {
+    "enabled": true,
+    "max_retries": 2
+  },
+  "stack": {
+    "backend": "dotnet8",
+    "frontend": "vue3-element"
+  }
+}

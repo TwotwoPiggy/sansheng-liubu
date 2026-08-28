@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "sansheng-liubu-config",
+  "version": "1.0.0",
+  "models": {
+    "architect_tier": "gemini-3.7-flash",
+    "worker_tier": "deepseek-v3",
+    "fallback_tier": "gemini-3.7-flash"
+  },
+  "escalation": {
+    "enabled": true,
+    "max_retries_before_escalate": 2
+  },
+  "stack": {
+    "backend": {
+      "framework": "dotnet8",
+      "test_command": "dotnet test --verbosity quiet",
+      "format_command": "dotnet format",
+      "lsp_server": "csharp-ls"
+    },
+    "frontend": {
+      "framework": "vue3-element",
+      "test_command": "npx vitest run --silent",
+      "format_command": "npx biome check --write",
+      "lsp_server": "vue-language-server"
+    }
+  },
+  "sliding_window": {
+    "max_task_lines": 150,
+    "archive_dir": ".tasks/archive"
+  },
+  "yongle_dadian": {
+    "enabled": true,
+    "auto_recall_on_align": true,
+    "auto_postmortem_on_fix": true
+  }
+}
