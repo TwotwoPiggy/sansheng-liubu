@@ -30,6 +30,37 @@
 
 ---
 
+## 🚀 现有项目（Existing Projects）快速接入实战指南
+
+对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝接入：
+
+### 步骤 1：进入已有项目根目录并初始化
+```bash
+cd "D:\your-existing-project"
+sansheng init
+```
+👉 **CLI 会全自动完成环境对账**：
+* ⚡ 自动探测 C# 编译环境 (`csharp-ls`) ➔ `✅ 已就绪`
+* 🧠 自动探测知识图谱 (`codebase-memory-mcp`) ➔ `✅ 已就绪`
+* 🏛️ 自动探测《永乐大典》连接 ➔ `✅ 已就绪`
+* 📄 自动生成项目专属 `.sanshengrc.json` 与 `ROADMAP.md` 总纲。
+
+### 步骤 2：生成项目 AST 代码符号骨架图
+```bash
+sansheng map
+```
+*自动生成 `.codebase_map.md`，秒级提取全系统 C# 与 Vue 3 核心类名、方法签名与行号（Token 物理压缩率 95%+）。*
+
+### 步骤 3：在 AI IDE 中直接对话开发
+在 Antigravity / Qoder / VS Code Copilot 对话框中，**直接用大白话输入需求**：
+1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”* ➔ AI 结合骨架图精准质询与提炼铁律；
+2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带单元测试门禁的 `TASK.md`（仅回显 3 行 HUD）；
+3. **六部 RUN**：回复 *“c”* ➔ AI 调用 `csharp-ls` 纯净编写代码，跑通 `dotnet test`；
+4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 没发邮件”* ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
+5. **结项归档**：回复 *“archive”* ➔ 两级自动归档，代码仓库恢复 100% 纯净。
+
+---
+
 ## 🧠 代码智能与知识图谱增强套件 (强烈推荐)
 
 `sansheng-liubu` 原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，彻底消灭盲读代码与上下文爆炸：
@@ -73,38 +104,21 @@ npm run test:lsp
 
 ---
 
-## 🗺️ Codebase Mapping (AST 代码骨架拓扑提取)
+## 💾 数据持久化与存储位置说明
 
-针对庞大老工程，传统 AI 往往盲读几万行源码导致 **Token 瞬间爆炸并引发上下文截断**。  
-`sansheng-liubu` 原生内置了基于 **AST 语法树的轻量代码拓扑提取器**：
-
-* **C# / .NET**：秒级遍历解析 `.cs` 源码，提取命名空间、`class` / `interface` 声明、方法入参签名与特性注解，**彻底剥离函数体 `{ ... }` 细节**；
-* **Vue 3 SFC**：精准提取 `<script setup>` 内的 `defineProps`、`defineEmits`、`defineExpose` 与核心函数签名；
-* **实测效果**：**Token 物理压缩率超过 95%**！把几万行的复杂工程压缩成一张仅占 1~2k Token 的超高密度架构符号图。
-
-一键提取命令：
-```bash
-sansheng map
-```
-*自动在项目根目录生成 `.codebase_map.md`。*
+* **项目 AST 骨架图**：直接保存在项目根目录的 [`.codebase_map.md`](.codebase_map.md)（透明 Markdown 纯文本）；
+* **CBM 知识图谱数据库**：持久化保存在本地物理固态硬盘 `~/.cache/codebase-memory-mcp/`（SQLite `.db` 磁盘文件，**电脑重启绝不丢失**）。
 
 ---
 
-## 📦 快速安装与使用
+## 📦 快速安装与 CLI 命令集
 
 ### 1. 全局安装
 ```bash
 npm install -g sansheng-liubu
 ```
 
-### 2. 项目初始化
-在你的 Vue3 / .NET 项目根目录下运行：
-```bash
-sansheng init
-```
-*自动检测《永乐大典》、LSP 与 CBM 环境，生成 `.sanshengrc.json` 与 `ROADMAP.md`。*
-
-### 3. CLI 常用命令集
+### 2. CLI 常用命令集
 | 命令 | 描述 |
 | :--- | :--- |
 | `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典 / LSP / CBM 探测） |
