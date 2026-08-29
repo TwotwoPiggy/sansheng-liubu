@@ -19,6 +19,7 @@
   "scripts": {
     "start": "node ./bin/cli.js",
     "test": "node ./bin/cli.js map",
+    "test:lsp": "node scripts/test-lsp.mjs",
     "release": "node scripts/release.mjs",
     "release:dry-run": "node scripts/release.mjs --dry-run",
     "release:patch": "node scripts/release.mjs patch",
@@ -29,6 +30,7 @@
   "files": [
     "bin",
     "src",
+    "scripts",
     "SKILL.md",
     "README.md",
     "sansheng.config.json",
