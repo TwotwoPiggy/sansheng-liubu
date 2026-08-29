@@ -18,6 +18,7 @@
 在 IDE 聊天框中输入 `/sansheng [内容]` 即可驱动全流程：
 ```
 /sansheng 帮我把所有列表页做异步导出重构
+/sansheng map   # 重新生成项目 AST 骨架图
 ```
 
 ### 3. 极速单字符快捷交互 (Shorthand)
@@ -29,43 +30,63 @@
 
 ---
 
+## 🧠 代码智能与知识图谱增强套件 (强烈推荐)
+
+`sansheng-liubu` 原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，彻底消灭盲读代码与上下文爆炸：
+
+```
+ ┌─────────────────────────────────────────────────────────────┐
+ │                🏆 三省六部“双引擎”代码智能体系               │
+ └──────────────────────────────┬──────────────────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        ▼                                               ▼
+【微观层: csharp-ls (LSP 编译器)】           【宏观层: CBM (知识图谱 MCP)】
+─────────────────────────────────           ─────────────────────────────────
+• 0-Token 原生跨文件原子重命名                • `get_architecture`: 秒级透视分层与入口
+• 100% 官方 Roslyn 语法与类型诊断             • `trace_path`: 双向追踪 10 层调用链
+• 0 毫秒精准跳转接口实现类                   • `detect_changes`: 评估 Git 改动爆炸半径
+```
+
+### 1. 安装 C# / .NET 官方语言服务器 (LSP 编译器微观精度)
+```bash
+dotnet tool install -g csharp-ls
+```
+
+### 2. 安装 CBM 知识图谱引擎 (宏观架构与 15 个 MCP 工具)
+```bash
+npm install -g codebase-memory-mcp
+```
+*(Windows PowerShell 也可直接运行官方脚本: `Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1; Unblock-File .\install.ps1; .\install.ps1`)*
+
+### 3. 安装 Vue 3 前端语言服务器 (可选)
+```bash
+npm install -g @vue/language-server
+```
+
+### 4. 一键自检全套代码智能环境
+```bash
+sansheng init
+# 或单独验证 LSP 协议:
+npm run test:lsp
+```
+
+---
+
 ## 🗺️ Codebase Mapping (AST 代码骨架拓扑提取)
 
 针对庞大老工程，传统 AI 往往盲读几万行源码导致 **Token 瞬间爆炸并引发上下文截断**。  
 `sansheng-liubu` 原生内置了基于 **AST 语法树的轻量代码拓扑提取器**：
 
-### 1. 工作原理与 Token 压缩率
 * **C# / .NET**：秒级遍历解析 `.cs` 源码，提取命名空间、`class` / `interface` 声明、方法入参签名与特性注解，**彻底剥离函数体 `{ ... }` 细节**；
 * **Vue 3 SFC**：精准提取 `<script setup>` 内的 `defineProps`、`defineEmits`、`defineExpose` 与核心函数签名；
 * **实测效果**：**Token 物理压缩率超过 95%**！把几万行的复杂工程压缩成一张仅占 1~2k Token 的超高密度架构符号图。
 
-### 2. 一键提取命令
+一键提取命令：
 ```bash
 sansheng map
 ```
-*自动在项目根目录生成 `.codebase_map.md`，AI 开工前先读骨架图，精准按需加载关键文件，杜绝源码盲读。*
-
----
-
-## 🔌 LSP 语言服务器安装指南 (强烈推荐)
-
-`sansheng-liubu` 原生内置了 **Language Server Protocol (LSP)** 客户端，配合语言服务器可解锁 **0-Token 跨文件原子重命名**、**毫秒级定义跳转**与**实时类型诊断（红波浪线捕获）**。
-
-### 1. 安装 C# / .NET 语言服务器
-```bash
-dotnet tool install -g csharp-ls
-```
-
-### 2. 安装 Vue 3 前端语言服务器
-```bash
-npm install -g @vue/language-server
-```
-
-### 3. 一键验证 LSP 运行状态
-```bash
-npm run test:lsp
-```
-*自动探测本机语言服务器安装状态并完成 JSON-RPC 协议自检。*
+*自动在项目根目录生成 `.codebase_map.md`。*
 
 ---
 
@@ -81,14 +102,14 @@ npm install -g sansheng-liubu
 ```bash
 sansheng init
 ```
-*自动检测《永乐大典》与 LSP 环境，生成 `.sanshengrc.json` 与 `ROADMAP.md`。*
+*自动检测《永乐大典》、LSP 与 CBM 环境，生成 `.sanshengrc.json` 与 `ROADMAP.md`。*
 
 ### 3. CLI 常用命令集
 | 命令 | 描述 |
 | :--- | :--- |
-| `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典与 LSP 探测） |
-| `sansheng map` | 秒级提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
+| `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典 / LSP / CBM 探测） |
 | `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
+| `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
 | `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |
 | `sansheng uat` | 启动交互式单项 UAT 验收与自愈修复循环 |
 | `sansheng archive` | 触发两级项目结项归档并同步至《永乐大典》 |
