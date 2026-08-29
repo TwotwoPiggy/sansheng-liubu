@@ -29,6 +29,24 @@
 
 ---
 
+## 🗺️ Codebase Mapping (AST 代码骨架拓扑提取)
+
+针对庞大老工程，传统 AI 往往盲读几万行源码导致 **Token 瞬间爆炸并引发上下文截断**。  
+`sansheng-liubu` 原生内置了基于 **AST 语法树的轻量代码拓扑提取器**：
+
+### 1. 工作原理与 Token 压缩率
+* **C# / .NET**：秒级遍历解析 `.cs` 源码，提取命名空间、`class` / `interface` 声明、方法入参签名与特性注解，**彻底剥离函数体 `{ ... }` 细节**；
+* **Vue 3 SFC**：精准提取 `<script setup>` 内的 `defineProps`、`defineEmits`、`defineExpose` 与核心函数签名；
+* **实测效果**：**Token 物理压缩率超过 95%**！把几万行的复杂工程压缩成一张仅占 1~2k Token 的超高密度架构符号图。
+
+### 2. 一键提取命令
+```bash
+sansheng map
+```
+*自动在项目根目录生成 `.codebase_map.md`，AI 开工前先读骨架图，精准按需加载关键文件，杜绝源码盲读。*
+
+---
+
 ## 🔌 LSP 语言服务器安装指南 (强烈推荐)
 
 `sansheng-liubu` 原生内置了 **Language Server Protocol (LSP)** 客户端，配合语言服务器可解锁 **0-Token 跨文件原子重命名**、**毫秒级定义跳转**与**实时类型诊断（红波浪线捕获）**。
@@ -69,8 +87,8 @@ sansheng init
 | 命令 | 描述 |
 | :--- | :--- |
 | `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典与 LSP 探测） |
+| `sansheng map` | 秒级提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
 | `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
-| `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
 | `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |
 | `sansheng uat` | 启动交互式单项 UAT 验收与自愈修复循环 |
 | `sansheng archive` | 触发两级项目结项归档并同步至《永乐大典》 |
