@@ -8,6 +8,7 @@ import { executeArchive } from '../src/core/shangshu.js';
 import { runUpdate } from '../src/core/updater.js';
 import { promptAndInstallYongle } from '../src/tools/yongle-installer.js';
 import { LSPClient } from '../src/tools/lsp-client.js';
+import { CBMBridge } from '../src/tools/cbm-bridge.js';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'help';
@@ -48,12 +49,15 @@ async function initProject() {
   // 1. 交互式检测并引导安装《永乐大典》
   const yongleActive = await promptAndInstallYongle();
 
-  // 2. 探测本地 LSP 语言服务器
+  // 2. 探测本地 LSP 语言服务器与 CBM 图数据库
   const csharpLsp = LSPClient.detectServer('csharp');
   const vueLsp = LSPClient.detectServer('vue');
-  console.log(`⚡ [LSP 环境检测]`);
+  const cbm = CBMBridge.detectCBM();
+
+  console.log(`⚡ [代码智能与图谱环境检测]`);
   console.log(`   ➔ C# LSP (${csharpLsp.command}): ${csharpLsp.installed ? '✅ 已就绪' : `⚠️ 未安装 (推荐: ${csharpLsp.tip})`}`);
   console.log(`   ➔ Vue LSP (${vueLsp.command}): ${vueLsp.installed ? '✅ 已就绪' : `⚠️ 未安装 (推荐: ${vueLsp.tip})`}`);
+  console.log(`   ➔ CBM 知识图谱 (codebase-memory-mcp): ${cbm.installed ? '✅ 已就绪 (15 个 MCP 架构工具已激活)' : `⚠️ 未安装 (推荐: ${cbm.tip})`}`);
 
   // 3. 初始化工作区配置
   const configPath = path.join(cwd, '.sanshengrc.json');
@@ -68,6 +72,10 @@ async function initProject() {
       stack: {
         backend: { framework: "dotnet8", lsp_server: csharpLsp.command },
         frontend: { framework: "vue3-element", lsp_server: vueLsp.command }
+      },
+      code_intelligence: {
+        cbm_enabled: cbm.installed,
+        lsp_enabled: csharpLsp.installed
       },
       yongle_dadian: {
         enabled: yongleActive,
@@ -115,7 +123,7 @@ function showStatus() {
 function showHelp() {
   console.log(`
 用法:
-  sansheng init      初始化三省六部工作区 (检测永乐大典与 LSP / 生成配置 / ROADMAP.md)
+  sansheng init      初始化三省六部工作区 (检测永乐大典 / LSP / CBM 图谱 / 生成配置 / ROADMAP.md)
   sansheng update    检查最新版本、无损同步工作区配置与 IDE 技能规则
   sansheng map       提取当前项目 AST 符号骨架 (.codebase_map.md)
   sansheng status    查看当前活跃阶段的 3 行 HUD 任务进度

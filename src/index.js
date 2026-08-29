@@ -7,3 +7,4 @@ export { LSPClient } from './tools/lsp-client.js';
 export { SubagentAdapter } from './tools/subagent-adapter.js';
 export { YongleBridge } from './tools/yongle-bridge.js';
 export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-installer.js';
+export { CBMBridge } from './tools/cbm-bridge.js';
