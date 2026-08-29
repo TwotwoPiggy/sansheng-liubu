@@ -29,6 +29,28 @@
 
 ---
 
+## 🔌 LSP 语言服务器安装指南 (强烈推荐)
+
+`sansheng-liubu` 原生内置了 **Language Server Protocol (LSP)** 客户端，配合语言服务器可解锁 **0-Token 跨文件原子重命名**、**毫秒级定义跳转**与**实时类型诊断（红波浪线捕获）**。
+
+### 1. 安装 C# / .NET 语言服务器
+```bash
+dotnet tool install -g csharp-ls
+```
+
+### 2. 安装 Vue 3 前端语言服务器
+```bash
+npm install -g @vue/language-server
+```
+
+### 3. 一键验证 LSP 运行状态
+```bash
+npm run test:lsp
+```
+*自动探测本机语言服务器安装状态并完成 JSON-RPC 协议自检。*
+
+---
+
 ## 📦 快速安装与使用
 
 ### 1. 全局安装
@@ -41,11 +63,12 @@ npm install -g sansheng-liubu
 ```bash
 sansheng init
 ```
+*自动检测《永乐大典》与 LSP 环境，生成 `.sanshengrc.json` 与 `ROADMAP.md`。*
 
 ### 3. CLI 常用命令集
 | 命令 | 描述 |
 | :--- | :--- |
-| `sansheng init` | 初始化当前工作区三省六部配置 |
+| `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典与 LSP 探测） |
 | `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
 | `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
 | `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |
