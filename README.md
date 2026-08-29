@@ -30,9 +30,58 @@
 
 ---
 
+## 📦 一键安装与环境配置指南
+
+三省六部原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，建议在开发机上一键安装好全套底座：
+
+```
+ ┌─────────────────────────────────────────────────────────────┐
+ │                🏆 三省六部“双引擎”代码智能体系               │
+ └──────────────────────────────┬──────────────────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        ▼                                               ▼
+【微观层: csharp-ls (LSP 编译器)】           【宏观层: CBM (知识图谱 MCP)】
+─────────────────────────────────           ─────────────────────────────────
+• 0-Token 原生跨文件原子重命名                • `get_architecture`: 秒级透视分层与入口
+• 100% 官方 Roslyn 语法与类型诊断             • `trace_path`: 双向追踪 10 层调用链
+• 0 毫秒精准跳转接口实现类                   • `detect_changes`: 评估 Git 改动爆炸半径
+```
+
+### 1. 全局安装三省六部核心引擎
+```bash
+npm install -g sansheng-liubu
+```
+
+### 2. 安装 C# / .NET 官方语言服务器 (LSP 编译器微观精度)
+```bash
+dotnet tool install -g csharp-ls
+```
+
+### 3. 安装 CBM 知识图谱引擎 (宏观架构与 15 个 MCP 工具)
+```bash
+npm install -g codebase-memory-mcp
+```
+*(Windows PowerShell 也可直接运行官方脚本: `Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1; Unblock-File .\install.ps1; .\install.ps1`)*
+
+### 4. 安装 Vue 3 前端语言服务器 (可选)
+```bash
+npm install -g @vue/language-server
+```
+
+### 5. 一键自检全套代码智能环境
+在终端任意目录下运行：
+```bash
+sansheng init
+# 或单独验证 LSP 协议:
+npm run test:lsp
+```
+
+---
+
 ## 🚀 现有项目（Existing Projects）快速接入实战指南
 
-对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活 **AST 骨架 + CBM 图谱 + LSP 编译器** 全套体系：
+当环境安装完成后，对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活 **AST 骨架 + CBM 图谱 + LSP 编译器** 全套体系：
 
 ### 步骤 1：进入已有项目根目录并初始化
 ```bash
@@ -71,46 +120,20 @@ codebase-memory-mcp cli index_repository
 
 ---
 
-## 🧠 代码智能与知识图谱增强套件 (强烈推荐)
+## 🗺️ Codebase Mapping (AST 代码骨架拓扑提取原理)
 
-`sansheng-liubu` 原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，彻底消灭盲读代码与上下文爆炸：
+针对庞大老工程，传统 AI 往往盲读几万行源码导致 **Token 瞬间爆炸并引发上下文截断**。  
+`sansheng-liubu` 原生内置了基于 **AST 语法树的轻量代码拓扑提取器**：
 
-```
- ┌─────────────────────────────────────────────────────────────┐
- │                🏆 三省六部“双引擎”代码智能体系               │
- └──────────────────────────────┬──────────────────────────────┘
-                                │
-        ┌───────────────────────┴───────────────────────┐
-        ▼                                               ▼
-【微观层: csharp-ls (LSP 编译器)】           【宏观层: CBM (知识图谱 MCP)】
-─────────────────────────────────           ─────────────────────────────────
-• 0-Token 原生跨文件原子重命名                • `get_architecture`: 秒级透视分层与入口
-• 100% 官方 Roslyn 语法与类型诊断             • `trace_path`: 双向追踪 10 层调用链
-• 0 毫秒精准跳转接口实现类                   • `detect_changes`: 评估 Git 改动爆炸半径
-```
+* **C# / .NET**：秒级遍历解析 `.cs` 源码，提取命名空间、`class` / `interface` 声明、方法入参签名与特性注解，**彻底剥离函数体 `{ ... }` 细节**；
+* **Vue 3 SFC**：精准提取 `<script setup>` 内的 `defineProps`、`defineEmits`、`defineExpose` 与核心函数签名；
+* **实测效果**：**Token 物理压缩率超过 95%**！把几万行的复杂工程压缩成一张仅占 1~2k Token 的超高密度架构符号图。
 
-### 1. 安装 C# / .NET 官方语言服务器 (LSP 编译器微观精度)
+一键提取命令：
 ```bash
-dotnet tool install -g csharp-ls
+sansheng map
 ```
-
-### 2. 安装 CBM 知识图谱引擎 (宏观架构与 15 个 MCP 工具)
-```bash
-npm install -g codebase-memory-mcp
-```
-*(Windows PowerShell 也可直接运行官方脚本: `Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1; Unblock-File .\install.ps1; .\install.ps1`)*
-
-### 3. 安装 Vue 3 前端语言服务器 (可选)
-```bash
-npm install -g @vue/language-server
-```
-
-### 4. 一键自检全套代码智能环境
-```bash
-sansheng init
-# 或单独验证 LSP 协议:
-npm run test:lsp
-```
+*自动在项目根目录生成 `.codebase_map.md`。*
 
 ---
 
@@ -121,14 +144,8 @@ npm run test:lsp
 
 ---
 
-## 📦 快速安装与 CLI 命令集
+## 🛠️ CLI 常用命令集
 
-### 1. 全局安装
-```bash
-npm install -g sansheng-liubu
-```
-
-### 2. CLI 常用命令集
 | 命令 | 描述 |
 | :--- | :--- |
 | `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典 / LSP / CBM 探测） |
