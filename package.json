@@ -1,6 +1,6 @@
 {
   "name": "sansheng-liubu",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "基于「三省六部制」的极简高质跨环境 AI 研发工作流引擎 (Vue 3 + .NET 8 / Core 3.1 深度优化)",
   "main": "src/index.js",
   "type": "module",
