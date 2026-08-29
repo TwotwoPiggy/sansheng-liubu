@@ -32,7 +32,7 @@
 
 ## 🚀 现有项目（Existing Projects）快速接入实战指南
 
-对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝接入：
+对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活 **AST 骨架 + CBM 图谱 + LSP 编译器** 全套体系：
 
 ### 步骤 1：进入已有项目根目录并初始化
 ```bash
@@ -45,19 +45,29 @@ sansheng init
 * 🏛️ 自动探测《永乐大典》连接 ➔ `✅ 已就绪`
 * 📄 自动生成项目专属 `.sanshengrc.json` 与 `ROADMAP.md` 总纲。
 
-### 步骤 2：生成项目 AST 代码符号骨架图
+### 步骤 2：建立项目代码地图与 CBM 知识图谱（双擎初始化）
 ```bash
+# 1. 提取 AST 纯文本代码符号骨架 (生成 .codebase_map.md，Token 物理压缩 95%+)
 sansheng map
-```
-*自动生成 `.codebase_map.md`，秒级提取全系统 C# 与 Vue 3 核心类名、方法签名与行号（Token 物理压缩率 95%+）。*
 
-### 步骤 3：在 AI IDE 中直接对话开发
+# 2. 为项目构建 CBM 知识图谱数据库 (秒级解析全局类节点、函数节点与调用链边)
+codebase-memory-mcp cli index_repository
+```
+> 💡 **可选：打开浏览器看 3D 图谱**：  
+> 运行 `codebase-memory-mcp --ui=true`，浏览器访问 `http://localhost:9749` 即可 3D 旋转查看调用拓扑！
+
+### 步骤 3：在 AI IDE 中直接对话开发（双擎协同流）
 在 Antigravity / Qoder / VS Code Copilot 对话框中，**直接用大白话输入需求**：
-1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”* ➔ AI 结合骨架图精准质询与提炼铁律；
-2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带单元测试门禁的 `TASK.md`（仅回显 3 行 HUD）；
-3. **六部 RUN**：回复 *“c”* ➔ AI 调用 `csharp-ls` 纯净编写代码，跑通 `dotnet test`；
-4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 没发邮件”* ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
-5. **结项归档**：回复 *“archive”* ➔ 两级自动归档，代码仓库恢复 100% 纯净。
+1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”*  
+   ➔ AI 自动调用 CBM 的 `get_architecture` 并结合 AST 骨架秒级透视分层，精准质询与提炼 `[RULE-xx]` 铁律；
+2. **门下省 PLAN**：回复 *“1A 2B 3A”*  
+   ➔ AI 自动调用 CBM 的 `detect_changes` 评估改动爆炸半径，生成带 `dotnet test` 门禁的 `TASK.md`（聊天框仅回显 3 行 HUD）；
+3. **六部 RUN**：回复 *“c”*  
+   ➔ AI 调用 CBM 的 `trace_path` 追踪深层调用链，配合 `csharp-ls` 进行 0-Token 原生重构与纯净写代码，跑通全部测试；
+4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 描述”*  
+   ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
+5. **结项归档**：回复 *“archive”*  
+   ➔ 两级自动归档，代码仓库恢复 100% 纯净。
 
 ---
 
