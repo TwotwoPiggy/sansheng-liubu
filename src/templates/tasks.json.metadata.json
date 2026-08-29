@@ -1,0 +1,5 @@
+{
+  "summary": "创建 VS Code 快捷任务模板 src/templates/tasks.json，绑定代码地图生成、单元测试与 UAT 验收。",
+  "updatedAt": "2026-08-29T13:04:45.623828400Z",
+  "userFacing": true
+}

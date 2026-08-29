@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "三省六部: 提取代码符号骨架 (sansheng map)",
+      "type": "shell",
+      "command": "sansheng map",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "三省六部: 运行质量门禁测试 (dotnet test)",
+      "type": "shell",
+      "command": "dotnet test --verbosity quiet",
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "三省六部: 启动 UAT 验收与自愈 (sansheng uat)",
+      "type": "shell",
+      "command": "sansheng uat",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "三省六部: 查看任务看板状态 (sansheng status)",
+      "type": "shell",
+      "command": "sansheng status",
+      "problemMatcher": []
+    }
+  ]
+}

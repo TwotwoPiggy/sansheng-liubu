@@ -30,6 +30,30 @@
 
 ---
 
+## 🛠️ VS Code + GitHub Copilot 专属深度增强
+
+针对主要使用 **VS Code + GitHub Copilot** 的开发者，`sansheng-liubu` 在 `sansheng init` 时会自动注入 **四大专属原生增强套件**：
+
+```
+ ┌─────────────────────────────────────────────────────────────┐
+ │           🏆 sansheng-liubu 针对 VS Code Copilot 专属增强    │
+ └──────────────────────────────┬──────────────────────────────┘
+                                │
+   ┌────────────────┬───────────┴────────┬────────────────┐
+   ▼                ▼                    ▼                ▼
+【1. 指令文件注入】 【2. 原生 MCP 工具】 【3. Prompt 模板】 【4. VS Code Tasks】
+.github/copilot-   .vscode/mcp.json     .github/prompts/  .vscode/tasks.json
+instructions.md    打通 CBM 15个工具     一键唤醒 /sansheng 快捷键一键跑测试/骨架
+每句对话自动注入    Copilot 直接查调用链  VS Code 原生斜杠   无需手动切终端敲命令
+```
+
+1. **自动注入 `.github/copilot-instructions.md`**：Copilot 每轮对话自动遵循三省六部极简高质铁律（消灭长篇刷屏，强制 3 行 HUD）；
+2. **自动生成 `.vscode/mcp.json`**：将 `codebase-memory-mcp` 直接挂进 VS Code，Copilot 聊天框可原生调用 `get_architecture`、`trace_path` 等 15 个工具；
+3. **原生 Prompt 模板 (`.github/prompts/sansheng.prompt.md`)**：VS Code Copilot 聊天框输入 `/sansheng` 即可一键唤醒自感知工作流；
+4. **快捷自动化任务 (`.vscode/tasks.json`)**：按 `Ctrl+Shift+P` ➔ 运行任务一键跑骨架提取与质量门禁测试。
+
+---
+
 ## 📦 一键安装与环境配置指南
 
 三省六部原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，建议在开发机上一键安装好全套底座：
@@ -81,18 +105,14 @@ npm run test:lsp
 
 ## 🚀 现有项目（Existing Projects）快速接入实战指南
 
-当环境安装完成后，对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活 **AST 骨架 + CBM 图谱 + LSP 编译器** 全套体系：
+当环境安装完成后，对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活全套体系：
 
 ### 步骤 1：进入已有项目根目录并初始化
 ```bash
 cd "D:\your-existing-project"
 sansheng init
 ```
-👉 **CLI 会全自动完成环境对账**：
-* ⚡ 自动探测 C# 编译环境 (`csharp-ls`) ➔ `✅ 已就绪`
-* 🧠 自动探测知识图谱 (`codebase-memory-mcp`) ➔ `✅ 已就绪`
-* 🏛️ 自动探测《永乐大典》连接 ➔ `✅ 已就绪`
-* 📄 自动生成项目专属 `.sanshengrc.json` 与 `ROADMAP.md` 总纲。
+👉 **CLI 会全自动完成环境对账并自动注入 VS Code / Copilot 增强**！
 
 ### 步骤 2：建立项目代码地图与 CBM 知识图谱（双擎初始化）
 ```bash
@@ -106,17 +126,12 @@ codebase-memory-mcp cli index_repository
 > 运行 `codebase-memory-mcp --ui=true`，浏览器访问 `http://localhost:9749` 即可 3D 旋转查看调用拓扑！
 
 ### 步骤 3：在 AI IDE 中直接对话开发（双擎协同流）
-在 Antigravity / Qoder / VS Code Copilot 对话框中，**直接用大白话输入需求**：
-1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”*  
-   ➔ AI 自动调用 CBM 的 `get_architecture` 并结合 AST 骨架秒级透视分层，精准质询与提炼 `[RULE-xx]` 铁律；
-2. **门下省 PLAN**：回复 *“1A 2B 3A”*  
-   ➔ AI 自动调用 CBM 的 `detect_changes` 评估改动爆炸半径，生成带 `dotnet test` 门禁的 `TASK.md`（聊天框仅回显 3 行 HUD）；
-3. **六部 RUN**：回复 *“c”*  
-   ➔ AI 调用 CBM 的 `trace_path` 追踪深层调用链，配合 `csharp-ls` 进行 0-Token 原生重构与纯净写代码，跑通全部测试；
-4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 描述”*  
-   ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
-5. **结项归档**：回复 *“archive”*  
-   ➔ 两级自动归档，代码仓库恢复 100% 纯净。
+在 VS Code Copilot / Antigravity / Qoder 对话框中，**直接用大白话输入需求**：
+1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”* ➔ AI 结合 CBM 图谱与骨架秒级透视分层，精准提问与提炼铁律；
+2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带 `dotnet test` 门禁的 `TASK.md`（聊天框仅回显 3 行 HUD）；
+3. **六部 RUN**：回复 *“c”* ➔ AI 调用 `csharp-ls` 纯净编写代码，跑通全部测试；
+4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 描述”* ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
+5. **结项归档**：回复 *“archive”* ➔ 两级自动归档，代码仓库恢复 100% 纯净。
 
 ---
 
@@ -148,7 +163,7 @@ sansheng map
 
 | 命令 | 描述 |
 | :--- | :--- |
-| `sansheng init` | 初始化当前工作区三省六部配置（含永乐大典 / LSP / CBM 探测） |
+| `sansheng init` | 初始化当前工作区三省六部配置（自动注入 Copilot 增强 / 探测 LSP 与 CBM） |
 | `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
 | `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
 | `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |

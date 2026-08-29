@@ -1,0 +1,5 @@
+{
+  "summary": "创建 VS Code 原生 MCP 配置文件模板 src/templates/mcp.json，为 VS Code Copilot 挂载 CBM 15个知识图谱工具。",
+  "updatedAt": "2026-08-29T13:04:41.644293Z",
+  "userFacing": true
+}
