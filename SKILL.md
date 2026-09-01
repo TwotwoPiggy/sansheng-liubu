@@ -16,9 +16,10 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
    - 用户随口抛出需求（如 *“帮我把列表改成异步导出”*），AI 自动检测并启动 **中书省 (ALIGN)**；
    - 用户输入 *“搞定”*、*“开跑”* 或 *“继续”*，AI 自动进入 **六部 (RUN)**。
 
-2. **统一斜杠指令（Unified Slash Command: `/sansheng`）**：
-   - 任何时候用户输入 `/sansheng [内容]`，AI 自动根据当前 `TASK.md` 的生命周期情境智能路由与推进。
-   - `/sansheng map` ➔ 立即为当前项目全量扫描并重新生成 `.codebase_map.md`。
+2. **统一斜杠指令（Unified Slash Command: `/sansheng` 或 `/sansheng-liubu`）**：
+   - 任何时候用户输入 `/sansheng [内容]` 或 `/sansheng-liubu [内容]`，AI 自动根据当前 `.sansheng/TASK.md`（或 `TASK.md`）的生命周期情境智能路由与推进。
+   - `/sansheng map` ➔ 立即为当前项目全量扫描并重新生成 `.sansheng/codebase_map.md`；
+   - `/sansheng sync-rules` ➔ 自动嗅探并转译 Trae / CatPaw / Qoder / Cursor 规则至 VS Code Copilot。
 
 3. **极速单字符/缩写响应支持（Shorthand Mode）**：
    - `c` (continue) / `r` (run) ➔ 尚书省全自动跑完所有任务与测试；
@@ -33,8 +34,8 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
 
 ### 1. 中书省 (Zhongshu) ➔ 【ALIGN 需求对齐阶段】(Tier-1 旗舰大脑)
 * **动作 0: 代码库拓扑感知 (Codebase Mapping)**：
-  - **自动前置触发**：若项目根目录不存在 `.codebase_map.md`，中书省在开工质询前**自动前置静默调用 `sansheng map`（或 `extractCodebaseMap`）**，秒级生成 AST 符号地图，依据骨架图开展精准提问，杜绝全量盲读源码；
-  - **显式指令触发**：当用户输入 *“扫一下项目”*、*“提取代码骨架”*、*“/sansheng map”* 时，立即全量更新 `.codebase_map.md`。
+  - **自动前置触发**：若项目不存在 `.sansheng/codebase_map.md`，中书省在开工质询前**自动前置静默调用 `sansheng map`（或 `extractCodebaseMap`）**，秒级生成 AST 符号地图，依据骨架图开展精准提问，杜绝全量盲读源码；
+  - **显式指令触发**：当用户输入 *“扫一下项目”*、*“提取代码骨架”*、*“/sansheng map”* 时，立即全量更新 `.sansheng/codebase_map.md`。
 * **动作 1: 前置召回**：静默检索《永乐大典》（`yongle-search`）中相关技术栈的历史踩坑经验。
 * **动作 2: 原子化提取**：将需求拆解为 `[REQ-01]`, `[REQ-02]`... 编号清单，拒绝遗漏任何细节。
 * **动作 3: 锚定式质询**：提出问题时必须遵守四要素格式：`📍 坐标` + `📝 微引用 (20字以内)` + `🔍 疑点分析` + `💡 推荐阶梯选项 (2~4项)`。
@@ -54,7 +55,7 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
   - 一键端到端冒烟命令。
   - 人工 UAT 交付清单 (`[UAT-01]` ...)。
 * **动作 3: 覆盖率对账**：自检所有 `[REQ-xx]` 是否 100% 被 Task 覆盖。
-* **动作 4: 生成 TASK.md**：将所有信息固化至 `TASK.md`（严格限制在 150 行以内），聊天窗口仅回显 3 行极简 HUD（绝不长篇刷屏）。
+* **动作 4: 生成 .sansheng/TASK.md**：将所有信息固化至 `.sansheng/TASK.md`（严格限制在 150 行以内，亦兼容根目录），聊天窗口仅回显 3 行极简 HUD（绝不长篇刷屏）。
 
 ---
 
@@ -69,5 +70,5 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
   - 弹出单项验收卡片：`1 / Passed` ➔ 打勾；`2 / Not Passed` ➔ 原地写复现用例、修复并重新复测。
   - 修复通过后，**即时触发 `yongle-postmortem` 将避坑心得归档至《永乐大典》**。
 * **动作 5: 两级自动归档**：
-  - 阶段完工：`TASK.md` 自动归档至 `.tasks/archive/`，载入新 Phase。
-  - 项目结项：执行 `archive`，经验全量同步《永乐大典》，清理临时文件，恢复仓库纯净。
+  - 阶段完工：任务看板自动归档至 `.sansheng/archive/`，载入新 Phase。
+  - 项目结项：执行 `archive`，经验全量同步《永乐大典》，清理临时文件与活跃任务看板，恢复仓库 100% 纯净。

@@ -32,7 +32,7 @@
 
 ## 🛠️ VS Code + GitHub Copilot 专属深度增强
 
-针对主要使用 **VS Code + GitHub Copilot** 的开发者，`sansheng-liubu` 在 `sansheng init` 时会自动注入 **四大专属原生增强套件**：
+针对主要使用 **VS Code + GitHub Copilot** 的开发者，`sansheng-liubu` 在 `sansheng init` 时会自动注入 **原生深度增强套件**：
 
 ```
  ┌─────────────────────────────────────────────────────────────┐
@@ -41,16 +41,16 @@
                                 │
    ┌────────────────┬───────────┴────────┬────────────────┐
    ▼                ▼                    ▼                ▼
-【1. 指令文件注入】 【2. 原生 MCP 工具】 【3. Prompt 模板】 【4. VS Code Tasks】
-.github/copilot-   .vscode/mcp.json     .github/prompts/  .vscode/tasks.json
-instructions.md    打通 CBM 15个工具     一键唤醒 /sansheng 快捷键一键跑测试/骨架
-每句对话自动注入    Copilot 直接查调用链  VS Code 原生斜杠   无需手动切终端敲命令
+【1. 指令文件注入】 【2. 原生 MCP 工具】 【3. Prompt 模板】 【4. VS Code Tasks/Settings】
+.github/copilot-   .vscode/mcp.json     .github/prompts/  .vscode/settings.json
+instructions.md    打通 CBM 15个工具     /sansheng 双别名   自动开启 chat.promptFiles
+每句对话自动注入    Copilot 直接查调用链  VS Code 原生斜杠   无需手动改配置敲命令
 ```
 
 1. **自动注入 `.github/copilot-instructions.md`**：Copilot 每轮对话自动遵循三省六部极简高质铁律（消灭长篇刷屏，强制 3 行 HUD）；
 2. **自动生成 `.vscode/mcp.json`**：将 `codebase-memory-mcp` 直接挂进 VS Code，Copilot 聊天框可原生调用 `get_architecture`、`trace_path` 等 15 个工具；
-3. **原生 Prompt 模板 (`.github/prompts/sansheng.prompt.md`)**：VS Code Copilot 聊天框输入 `/sansheng` 即可一键唤醒自感知工作流；
-4. **快捷自动化任务 (`.vscode/tasks.json`)**：按 `Ctrl+Shift+P` ➔ 运行任务一键跑骨架提取与质量门禁测试。
+3. **原生 Prompt 模板 (`.github/prompts/` & `.vscode/prompts/`)**：VS Code Copilot 聊天框输入 `/sansheng` 或 `/sansheng-liubu` 即可一键唤醒自感知工作流；
+4. **自动配置 `.vscode/settings.json` 与 `.vscode/tasks.json`**：自动启用 `chat.promptFiles: true` 确保斜杠指令立即可用，一键绑定自动化测试与骨架扫描。
 
 ---
 
@@ -116,7 +116,7 @@ sansheng init
 
 ### 步骤 2：建立项目代码地图与 CBM 知识图谱（双擎初始化）
 ```bash
-# 1. 提取 AST 纯文本代码符号骨架 (生成 .codebase_map.md，Token 物理压缩 95%+)
+# 1. 提取 AST 纯文本代码符号骨架 (生成 .sansheng/codebase_map.md，Token 物理压缩 95%+)
 sansheng map
 
 # 2. 为项目构建 CBM 知识图谱数据库 (秒级解析全局类节点、函数节点与调用链边)
@@ -128,7 +128,7 @@ codebase-memory-mcp cli index_repository
 ### 步骤 3：在 AI IDE 中直接对话开发（双擎协同流）
 在 VS Code Copilot / Antigravity / Qoder 对话框中，**直接用大白话输入需求**：
 1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”* ➔ AI 结合 CBM 图谱与骨架秒级透视分层，精准提问与提炼铁律；
-2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带 `dotnet test` 门禁的 `TASK.md`（聊天框仅回显 3 行 HUD）；
+2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带 `dotnet test` 门禁的 `.sansheng/TASK.md`（聊天框仅回显 3 行 HUD）；
 3. **六部 RUN**：回复 *“c”* ➔ AI 调用 `csharp-ls` 纯净编写代码，跑通全部测试；
 4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 描述”* ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
 5. **结项归档**：回复 *“archive”* ➔ 两级自动归档，代码仓库恢复 100% 纯净。
@@ -148,13 +148,14 @@ codebase-memory-mcp cli index_repository
 ```bash
 sansheng map
 ```
-*自动在项目根目录生成 `.codebase_map.md`。*
+*自动在 `.sansheng/codebase_map.md` 生成（已自动加入 `.gitignore`，不污染 Git 提交）。*
 
 ---
 
 ## 💾 数据持久化与存储位置说明
 
-* **项目 AST 骨架图**：直接保存在项目根目录的 [`.codebase_map.md`](.codebase_map.md)（透明 Markdown 纯文本）；
+* **项目 AST 骨架图**：保存在项目私有目录 [`.sansheng/codebase_map.md`](.sansheng/codebase_map.md)（透明 Markdown 纯文本）；
+* **项目配置与归档**：分别保存在 `.sansheng/config.json` 与 `.sansheng/archive/`；
 * **CBM 知识图谱数据库**：持久化保存在本地物理固态硬盘 `~/.cache/codebase-memory-mcp/`（SQLite `.db` 磁盘文件，**电脑重启绝不丢失**）。
 
 ---
@@ -163,9 +164,10 @@ sansheng map
 
 | 命令 | 描述 |
 | :--- | :--- |
-| `sansheng init` | 初始化当前工作区三省六部配置（自动注入 Copilot 增强 / 探测 LSP 与 CBM） |
+| `sansheng init` | 初始化当前工作区三省六部配置（统一收敛至 `.sansheng/`，自动注入 VS Code 增强） |
+| `sansheng sync-rules` | 自动嗅探 Trae-CN / CatPaw / Qoder / Cursor 规则并智能转译同步至 VS Code Copilot |
 | `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
-| `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.codebase_map.md`) |
+| `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.sansheng/codebase_map.md`) |
 | `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |
 | `sansheng uat` | 启动交互式单项 UAT 验收与自愈修复循环 |
 | `sansheng archive` | 触发两级项目结项归档并同步至《永乐大典》 |

@@ -7,9 +7,12 @@ import path from 'path';
  */
 export async function runInteractiveUAT() {
   const cwd = process.cwd();
-  const taskPath = path.join(cwd, 'TASK.md');
+  const sanshengTask = path.join(cwd, '.sansheng/TASK.md');
+  const rootTask = path.join(cwd, 'TASK.md');
+  const taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : sanshengTask);
+  
   if (!fs.existsSync(taskPath)) {
-    console.log(`⚠️ 未找到 TASK.md，无法启动 UAT 验收。`);
+    console.log(`⚠️ 未找到 TASK.md（已检查 .sansheng/TASK.md 与 TASK.md），无法启动 UAT 验收。`);
     return;
   }
 

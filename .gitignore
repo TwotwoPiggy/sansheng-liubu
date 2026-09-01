@@ -4,5 +4,8 @@ node_modules/
 npm-debug.log*
 .tasks/archive/
 .codebase_map.md
+.sansheng/codebase_map.md
+.sansheng/cache/
 dist/
 coverage/
+

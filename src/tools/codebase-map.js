@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const IGNORED_DIRS = ['node_modules', 'bin', 'obj', '.git', 'dist', 'build', '.tasks', '.system_generated'];
+const IGNORED_DIRS = ['node_modules', 'bin', 'obj', '.git', 'dist', 'build', '.tasks', '.sansheng', '.system_generated'];
 
 /**
  * 递归扫描并提取工作区 C# / Vue3 / TS / JS 代码符号骨架

@@ -14,18 +14,30 @@ export async function runUpdate() {
     console.log(`📦 当前本地版本: v${localPkg.version}`);
   } catch (_) {}
 
-  // 2. 平滑增量合并工作区配置 (.sanshengrc.json)
+  // 2. 平滑增量合并工作区配置 (.sansheng/config.json)
   const cwd = process.cwd();
-  const configPath = path.join(cwd, '.sanshengrc.json');
+  const sanshengDir = path.join(cwd, '.sansheng');
+  if (!fs.existsSync(sanshengDir)) fs.mkdirSync(sanshengDir, { recursive: true });
+
+  const configPath = path.join(sanshengDir, 'config.json');
+  const legacyConfigPath = path.join(cwd, '.sanshengrc.json');
+
+  let activeConfigPath = null;
   if (fs.existsSync(configPath)) {
+    activeConfigPath = configPath;
+  } else if (fs.existsSync(legacyConfigPath)) {
+    activeConfigPath = legacyConfigPath;
+  }
+
+  if (activeConfigPath) {
     try {
-      const userConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      const userConfig = JSON.parse(fs.readFileSync(activeConfigPath, 'utf-8'));
       // 补充可能新增的缺省字段
       if (!userConfig.models) userConfig.models = {};
       if (!userConfig.models.fallback_tier) userConfig.models.fallback_tier = "gemini-3.7-flash";
       if (!userConfig.stack) userConfig.stack = { backend: "dotnet8", frontend: "vue3-element" };
       fs.writeFileSync(configPath, JSON.stringify(userConfig, null, 2), 'utf-8');
-      console.log(`✅ 工作区配置已完成无损增量同步: .sanshengrc.json`);
+      console.log(`✅ 工作区配置已完成无损增量同步: .sansheng/config.json`);
     } catch (e) {
       console.warn(`⚠️ 合并配置失败:`, e.message);
     }

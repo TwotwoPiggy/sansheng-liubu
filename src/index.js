@@ -9,3 +9,4 @@ export { YongleBridge } from './tools/yongle-bridge.js';
 export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-installer.js';
 export { CBMBridge } from './tools/cbm-bridge.js';
 export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
+export { RuleSync } from './tools/rule-sync.js';

@@ -9,9 +9,19 @@ import path from 'path';
 export class Shangshu {
   constructor(cwd = process.cwd()) {
     this.cwd = cwd;
-    this.taskPath = path.join(cwd, 'TASK.md');
-    this.roadmapPath = path.join(cwd, 'ROADMAP.md');
-    this.archiveDir = path.join(cwd, '.tasks/archive');
+    const sanshengDir = path.join(cwd, '.sansheng');
+    
+    // 优先读取 .sansheng/TASK.md，向下兼容根目录 TASK.md
+    const sanshengTask = path.join(sanshengDir, 'TASK.md');
+    const rootTask = path.join(cwd, 'TASK.md');
+    this.taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : sanshengTask);
+
+    // 优先读取 .sansheng/ROADMAP.md，向下兼容根目录 ROADMAP.md
+    const sanshengRoadmap = path.join(sanshengDir, 'ROADMAP.md');
+    const rootRoadmap = path.join(cwd, 'ROADMAP.md');
+    this.roadmapPath = fs.existsSync(sanshengRoadmap) ? sanshengRoadmap : (fs.existsSync(rootRoadmap) ? rootRoadmap : sanshengRoadmap);
+
+    this.archiveDir = path.join(sanshengDir, 'archive');
   }
 
   /**
@@ -46,6 +56,12 @@ export class Shangshu {
    */
   closeMilestone() {
     this.archivePhase('final');
+    if (fs.existsSync(this.taskPath)) {
+      try {
+        fs.unlinkSync(this.taskPath);
+        console.log(`🧹 [尚书省纯净化] 已安全清理当前活跃任务看板: ${path.relative(this.cwd, this.taskPath)}`);
+      } catch (_) {}
+    }
     console.log(`🎉 [尚书省结项] 项目开发全链路圆满完成！`);
     console.log(`💡 正在触发《永乐大典》云端双向同步 (yongle-sync)...`);
   }

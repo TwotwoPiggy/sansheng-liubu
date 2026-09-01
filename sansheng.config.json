@@ -27,7 +27,7 @@
   },
   "sliding_window": {
     "max_task_lines": 150,
-    "archive_dir": ".tasks/archive"
+    "archive_dir": ".sansheng/archive"
   },
   "yongle_dadian": {
     "enabled": true,
