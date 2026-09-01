@@ -1,0 +1,23 @@
+# cordis.yml - DeepSeek Harness (dsh) 本地调试补丁配置文件
+plugins:
+  # 基础服务预设
+  group:agent:
+    dsh-tools: {}
+    dsh-session: {}
+    dsh-user-approval: {}
+
+  # 挂载本地开发的三省六部工作流插件
+  insert:
+    - path: ./src/index.js:
+        models:
+          architectTier: "gemini-3.7-flash"
+          workerTier: "deepseek-v3"
+          fallbackTier: "gemini-3.7-flash"
+        escalationMaxRetries: 2
+        codeIntelligence:
+          lspEnabled: true
+          cbmEnabled: false
+        yongleDadian:
+          enabled: true
+          autoRecallOnAlign: true
+          autoPostmortemOnFix: true

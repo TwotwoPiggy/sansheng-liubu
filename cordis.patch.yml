@@ -1,0 +1,18 @@
+# 三省六部 (sansheng-liubu) × DeepSeek Harness 组合包层
+# 安装: dsh plugin --profile <name> add <路径> (或 dsh plugin --profile <name> add sansheng-liubu)
+- insert:
+    - id: sansheng-liubu
+      name: sansheng-liubu
+      config:
+        models:
+          architectTier: "gemini-3.7-flash"
+          workerTier: "deepseek-v3"
+          fallbackTier: "gemini-3.7-flash"
+        escalationMaxRetries: 2
+        codeIntelligence:
+          lspEnabled: true
+          cbmEnabled: false
+        yongleDadian:
+          enabled: true
+          autoRecallOnAlign: true
+          autoPostmortemOnFix: true

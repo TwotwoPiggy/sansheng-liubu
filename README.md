@@ -193,6 +193,152 @@ sansheng uat
 
 ---
 
+## 🔌 DeepSeek Harness (`dsh`) 插件接入指南
+
+`sansheng-liubu` 原生符合 **DeepSeek Harness (`dsh`) / Cordis Meta-Framework** 插件开发规范（**“一切皆插件”**、**“Fail-Closed 审批阻断”** 与 **“响应式自清理 Reversible Effects”**）。
+
+---
+
+### 1. 📥 插件安装 (Installation)
+
+#### 方式 A：本地源码软链接安装（开发调试首选，修改源码无需发版即时生效）
+在本地开发插件时，直接将源码目录软链到指定的 profile 中：
+```bash
+# 将本地插件软链接至 dev profile
+dsh plugin --profile dev add D:\Computers\AIDevelop\Tools\Skills\sansheng-liubu
+
+# 也可以链接到默认的 web profile
+dsh plugin --profile web add D:\Computers\AIDevelop\Tools\Skills\sansheng-liubu
+```
+
+#### 方式 B：通过 DSH 命令行安装 (生产环境 NPM 发布后)
+在你的 DSH 项目根目录中运行：
+```bash
+# 使用 DSH 官方插件管理指令
+dsh plugin add sansheng-liubu
+
+# 或通过包管理器直接引入
+pnpm add sansheng-liubu
+# 或
+npm install sansheng-liubu
+```
+
+#### 方式 C：通过 DSH Web UI 可视化安装
+1. 启动 DSH Web 界面并访问（默认 `http://localhost:5173`）；
+2. 导航至左侧侧边栏 **Settings ➔ Plugins**（插件市场）；
+3. 在搜索框输入 `sansheng-liubu`，点击 **Install**（安装）；
+4. 安装完成后，插件状态将自动变为绿色 **Active**（已激活）。
+
+#### 方式 D：本地开发与热联调补丁挂载 (Local Dev & Patch)
+若在本地进行插件开发调试，可在工作区根目录创建 `cordis.yml`：
+```yaml
+plugins:
+  group:agent:
+    dsh-tools: {}
+    dsh-session: {}
+    dsh-user-approval: {}
+
+  insert:
+    - path: ./node_modules/sansheng-liubu/src/index.js: # 或指向本地开发源码路径 ./src/index.js
+        models:
+          architectTier: "gemini-3.7-flash"
+          workerTier: "deepseek-v3"
+          fallbackTier: "gemini-3.7-flash"
+        escalationMaxRetries: 2
+        codeIntelligence:
+          lspEnabled: true
+          cbmEnabled: false
+        yongleDadian:
+          enabled: true
+          autoRecallOnAlign: true
+          autoPostmortemOnFix: true
+```
+使用 DSH 补丁模式启动 Web UI：
+```bash
+npx @deepseek-ai/dsh web --patch ./cordis.yml
+```
+
+---
+
+### 2. 🔄 插件更新 (Update)
+
+#### 方式 A：通过 DSH 命令行更新
+```bash
+# 升级插件至最新版本
+dsh plugin update sansheng-liubu
+
+# 或通过包管理器更新
+pnpm update sansheng-liubu
+```
+
+#### 方式 B：通过 DSH Web UI 一键升级
+1. 进入 **Settings ➔ Plugins**；
+2. 找到 `sansheng-liubu`，若有新版本将显示 **Update** 按钮；
+3. 点击 **Update**，Cordis 运行时将自动完成无损热重载（Hot-Reload），无需重启 DSH 后台服务。
+
+#### 方式 C：通过三省六部内置 CLI 升级
+```bash
+sansheng update
+```
+- 自动检查 npm 注册表最新版本并无损增量同步工作区配置与 Prompt 模板。
+
+---
+
+### 3. 🗑️ 插件卸载与停用 (Uninstall & Disable)
+
+#### 1. 临时停用 (Disable / Pause)
+- **Web UI 操作**：在 **Settings ➔ Plugins** 中，找到 `sansheng-liubu` 并关闭状态开关（Toggle Switch）。
+- **CLI 操作**：
+  ```bash
+  dsh plugin disable sansheng-liubu
+  ```
+- **生命周期表现**：Cordis 会自动触发 `ctx.on('dispose')` 钩子，立即注销已注册的 6 个 Tool，安全清理后台定时器与子进程，**绝无悬挂句柄或内存残留**。
+
+#### 2. 彻底卸载 (Uninstall / Remove)
+- **Web UI 操作**：在 **Settings ➔ Plugins** 中点击 `sansheng-liubu` 的 **Uninstall**（卸载）按钮并确认。
+- **CLI 操作**：
+  ```bash
+  dsh plugin remove sansheng-liubu
+  # 或
+  pnpm remove sansheng-liubu
+  ```
+- **清理本地配置（可选）**：若需完全清除本地工作区状态，可手动删除 `.sansheng/` 目录。
+
+---
+
+### 4. ⚙️ 配置项说明 (Schemastery Configuration)
+
+在 DSH Web UI 配置面板中，`sansheng-liubu` 会自动渲染可视化配置表单：
+
+| 配置项 (Key) | 类型 (Type) | 默认值 (Default) | 描述说明 |
+| :--- | :--- | :--- | :--- |
+| `models.architectTier` | `string` | `gemini-3.7-flash` | 中书省起草、微引用质询与门禁对齐的大脑模型 (架构师层级) |
+| `models.workerTier` | `string` | `deepseek-v3` | 六部工兵派生纯净上下文执行模型 (工兵层级，极致省 Token) |
+| `models.fallbackTier` | `string` | `gemini-3.7-flash` | 工兵连续失败时的自愈升配兜底模型 |
+| `escalationMaxRetries` | `number` | `2` | 工兵单任务自测失败最大自愈重试次数（超过自动升配） |
+| `codeIntelligence.lspEnabled`| `boolean` | `true` | 是否启用 C# (`csharp-ls`) 与 Vue 3 (`volar`) LSP 语义增强 |
+| `codeIntelligence.cbmEnabled`| `boolean` | `false` | 是否连接 `codebase-memory-mcp` 知识图谱数据库 |
+| `yongleDadian.enabled` | `boolean` | `true` | 是否连接《永乐大典》双向知识复利库 |
+| `yongleDadian.autoRecallOnAlign` | `boolean` | `true` | 在 ALIGN 需求对齐阶段静默前置召回技术栈历史避坑经验 |
+| `yongleDadian.autoPostmortemOnFix` | `boolean` | `true` | 在 UAT 缺陷修复后即时触发复盘沉淀知识 |
+
+---
+
+### 5. 🧰 DSH 原生工具清单 (Tool Registry)
+
+DSH 模型上下文可随时调用以下受控工具：
+
+| 工具名称 (`name`) | 权限等级 (`permissionTier`) | 风险分类 (`riskLevel`) | 功能描述 |
+| :--- | :--- | :--- | :--- |
+| `sansheng_codebase_map` | `workspace-read` | `low` | 扫描并提取 AST 符号拓扑骨架 (C#/Vue3/TS/JS，压缩率>95%) |
+| `sansheng_task_status` | `read-only` | `low` | 读取当前活跃阶段 150 行 HUD 任务进度看板与完成率 |
+| `sansheng_uat_gate` | `workspace-write` | `medium` | 管理与断言 UAT 质量门禁清单 `[UAT-xx]`，支持标记与缺陷自愈 |
+| `sansheng_archive` | `workspace-write` | `medium` | 执行两级归档（阶段切片归档 / 结项全量归档并同步知识库） |
+| `sansheng_sync_rules` | `workspace-write` | `medium` | 自动嗅探并双向同步多 AI IDE (Trae/Cursor/Qoder) 规则 |
+| `sansheng_dispatch_worker` | `dangerous` | `high` | 派生纯净工兵执行任务，**强制接入 `ctx.approval` 显式审批阻断 (Fail-Closed)** |
+
+---
+
 ## 🛠️ CLI 常用命令速查表
 
 | 命令 | 适用场景 | 对应三省六部底层逻辑 |
@@ -210,3 +356,4 @@ sansheng uat
 
 ## 📄 详细架构白皮书
 完整 21 章节工业级设计白皮书详见：[`LITE_DEV_WORKFLOW_SPEC.md`](./LITE_DEV_WORKFLOW_SPEC.md)
+
