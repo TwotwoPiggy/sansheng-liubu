@@ -1,6 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 
+const IDE_REGISTRY = [
+  { type: 'trae', aliases: ['trae', 'trae-cn'], dir: '.trae', files: ['rules.md', 'project_rules.md'], subDirs: [{ path: 'rules' }], exportPath: '.trae/rules.md', name: 'Trae' },
+  { type: 'catpaw', aliases: ['catpaw', 'catpawai'], dir: '.catpaw', files: ['rules.md', 'system_prompt.md'], subDirs: [{ path: 'rules' }, { path: 'prompts', isPrompt: true }], exportPath: '.catpaw/rules.md', name: 'CatPaw' },
+  { type: 'qoder', aliases: ['qoder'], dir: '.qoder', files: ['rules.md', 'guidelines.md'], subDirs: [{ path: 'rules' }], rootFile: '.qoderrules', exportPath: '.qoder/rules.md', name: 'Qoder' },
+  { type: 'cursor', aliases: ['cursor'], rootFile: '.cursorrules', dir: '.cursor', subDirs: [{ path: 'rules', exts: ['.mdc', '.md'] }], exportPath: '.cursorrules', name: 'Cursor' },
+  { type: 'claude', rootFile: 'CLAUDE.md' },
+  { type: 'windsurf', rootFile: '.windsurfrules' },
+];
+
 /**
  * 跨 AI IDE 规则转译与同步引擎 (RuleSync)
  * 适配支持: Trae-CN, CatPaw AI, Qoder, Cursor, Claude Code, Windsurf ➔ VS Code Copilot
@@ -11,79 +20,35 @@ export class RuleSync {
    */
   static detectSources(cwd = process.cwd()) {
     const sources = [];
-
-    // 1. Trae-CN (字节)
-    const traeDir = path.join(cwd, '.trae');
-    if (fs.existsSync(traeDir)) {
-      const traeFiles = ['rules.md', 'project_rules.md'];
-      for (const f of traeFiles) {
-        const full = path.join(traeDir, f);
-        if (fs.existsSync(full)) sources.push({ type: 'trae', path: full, name: f });
+    for (const conf of IDE_REGISTRY) {
+      if (conf.rootFile) {
+        const full = path.join(cwd, conf.rootFile);
+        if (fs.existsSync(full)) sources.push({ type: conf.type, path: full, name: conf.rootFile });
       }
-      const traeRulesSub = path.join(traeDir, 'rules');
-      if (fs.existsSync(traeRulesSub) && fs.statSync(traeRulesSub).isDirectory()) {
-        const files = fs.readdirSync(traeRulesSub).filter(f => f.endsWith('.md'));
-        files.forEach(f => sources.push({ type: 'trae', path: path.join(traeRulesSub, f), name: f }));
-      }
-    }
-
-    // 2. CatPaw AI (猫爪)
-    const catpawDir = path.join(cwd, '.catpaw');
-    if (fs.existsSync(catpawDir)) {
-      const catpawFiles = ['rules.md', 'system_prompt.md'];
-      for (const f of catpawFiles) {
-        const full = path.join(catpawDir, f);
-        if (fs.existsSync(full)) sources.push({ type: 'catpaw', path: full, name: f });
-      }
-      const cpRules = path.join(catpawDir, 'rules');
-      if (fs.existsSync(cpRules) && fs.statSync(cpRules).isDirectory()) {
-        const files = fs.readdirSync(cpRules).filter(f => f.endsWith('.md'));
-        files.forEach(f => sources.push({ type: 'catpaw', path: path.join(cpRules, f), name: f }));
-      }
-      const cpPrompts = path.join(catpawDir, 'prompts');
-      if (fs.existsSync(cpPrompts) && fs.statSync(cpPrompts).isDirectory()) {
-        const files = fs.readdirSync(cpPrompts).filter(f => f.endsWith('.md'));
-        files.forEach(f => sources.push({ type: 'catpaw', path: path.join(cpPrompts, f), name: f, isPrompt: true }));
+      if (conf.dir) {
+        const pDir = path.join(cwd, conf.dir);
+        if (!fs.existsSync(pDir)) continue;
+        
+        (conf.files || []).forEach(f => {
+          const full = path.join(pDir, f);
+          if (fs.existsSync(full)) sources.push({ type: conf.type, path: full, name: f });
+        });
+        
+        (conf.subDirs || []).forEach(sub => {
+          const sDir = path.join(pDir, sub.path);
+          if (fs.existsSync(sDir) && fs.statSync(sDir).isDirectory()) {
+            const exts = sub.exts || ['.md'];
+            fs.readdirSync(sDir)
+              .filter(f => exts.some(e => f.endsWith(e)))
+              .forEach(f => {
+                const s = { type: conf.type, path: path.join(sDir, f), name: f };
+                if (sub.isPrompt) s.isPrompt = true;
+                sources.push(s);
+              });
+          }
+        });
       }
     }
-
-    // 3. Qoder
-    const qoderDir = path.join(cwd, '.qoder');
-    if (fs.existsSync(qoderDir)) {
-      const qFiles = ['rules.md', 'guidelines.md'];
-      for (const f of qFiles) {
-        const full = path.join(qoderDir, f);
-        if (fs.existsSync(full)) sources.push({ type: 'qoder', path: full, name: f });
-      }
-      const qRules = path.join(qoderDir, 'rules');
-      if (fs.existsSync(qRules) && fs.statSync(qRules).isDirectory()) {
-        const files = fs.readdirSync(qRules).filter(f => f.endsWith('.md'));
-        files.forEach(f => sources.push({ type: 'qoder', path: path.join(qRules, f), name: f }));
-      }
-    }
-    const qoderRootRule = path.join(cwd, '.qoderrules');
-    if (fs.existsSync(qoderRootRule)) {
-      sources.push({ type: 'qoder', path: qoderRootRule, name: '.qoderrules' });
-    }
-
-    // 4. Cursor (.cursorrules / .cursor/rules/*.mdc)
-    const cursorRoot = path.join(cwd, '.cursorrules');
-    if (fs.existsSync(cursorRoot)) {
-      sources.push({ type: 'cursor', path: cursorRoot, name: '.cursorrules' });
-    }
-    const cursorRulesDir = path.join(cwd, '.cursor', 'rules');
-    if (fs.existsSync(cursorRulesDir) && fs.statSync(cursorRulesDir).isDirectory()) {
-      const files = fs.readdirSync(cursorRulesDir).filter(f => f.endsWith('.mdc') || f.endsWith('.md'));
-      files.forEach(f => sources.push({ type: 'cursor', path: path.join(cursorRulesDir, f), name: f }));
-    }
-
-    // 5. Claude Code / Windsurf
-    const claudeMd = path.join(cwd, 'CLAUDE.md');
-    if (fs.existsSync(claudeMd)) sources.push({ type: 'claude', path: claudeMd, name: 'CLAUDE.md' });
-
-    const windsurfRules = path.join(cwd, '.windsurfrules');
-    if (fs.existsSync(windsurfRules)) sources.push({ type: 'windsurf', path: windsurfRules, name: '.windsurfrules' });
-
     return sources;
   }
 
@@ -275,24 +240,14 @@ export class RuleSync {
     const combinedContent = files.map(f => fs.readFileSync(path.join(rulesDir, f), 'utf-8')).join('\n\n---\n\n');
 
     const ide = targetIDE.toLowerCase().trim();
-    if (ide === 'trae' || ide === 'trae-cn') {
-      const traeDir = path.join(cwd, '.trae');
-      if (!fs.existsSync(traeDir)) fs.mkdirSync(traeDir, { recursive: true });
-      fs.writeFileSync(path.join(traeDir, 'rules.md'), combinedContent, 'utf-8');
-      console.log(`✅ 已成功导出 Trae 规则: .trae/rules.md`);
-    } else if (ide === 'catpaw' || ide === 'catpawai') {
-      const catpawDir = path.join(cwd, '.catpaw');
-      if (!fs.existsSync(catpawDir)) fs.mkdirSync(catpawDir, { recursive: true });
-      fs.writeFileSync(path.join(catpawDir, 'rules.md'), combinedContent, 'utf-8');
-      console.log(`✅ 已成功导出 CatPaw 规则: .catpaw/rules.md`);
-    } else if (ide === 'qoder') {
-      const qoderDir = path.join(cwd, '.qoder');
-      if (!fs.existsSync(qoderDir)) fs.mkdirSync(qoderDir, { recursive: true });
-      fs.writeFileSync(path.join(qoderDir, 'rules.md'), combinedContent, 'utf-8');
-      console.log(`✅ 已成功导出 Qoder 规则: .qoder/rules.md`);
-    } else if (ide === 'cursor') {
-      fs.writeFileSync(path.join(cwd, '.cursorrules'), combinedContent, 'utf-8');
-      console.log(`✅ 已成功导出 Cursor 规则: .cursorrules`);
+    const conf = IDE_REGISTRY.find(c => c.aliases && c.aliases.includes(ide));
+    
+    if (conf && conf.exportPath) {
+      const expPath = path.join(cwd, conf.exportPath);
+      const expDir = path.dirname(expPath);
+      if (!fs.existsSync(expDir)) fs.mkdirSync(expDir, { recursive: true });
+      fs.writeFileSync(expPath, combinedContent, 'utf-8');
+      console.log(`✅ 已成功导出 ${conf.name} 规则: ${conf.exportPath}`);
     } else {
       console.log(`⚠️ 未知目标 IDE: ${targetIDE} (支持: trae, catpaw, qoder, cursor)`);
     }

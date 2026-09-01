@@ -1,176 +1,210 @@
 # 🏛️ 三省六部 (sansheng-liubu)
 
-> 基于中国古代「三省六部制」的极简高质跨环境 AI 研发工作流系统  
-> **核心定位**：高质量交付 + 去形式主义（羽量级） + 极致节省 Token（降幅 85%+）  
-> **深度适配**：Vue 3 + Element Plus/UI + C# / .NET 8 / .NET Core 3.1 + HTML/JS/JSON/XML
+> **基于中国古代「三省六部制」的极简高质跨环境 AI 研发工作流系统**  
+> **核心定位**：高质量交付（100%需求对账 + 专属质量门禁） + 去形式主义（羽量级 3 行 HUD） + 极致节省 Token（降幅 85%+）  
+> **深度适配**：Vue 3 + Element Plus/UI + C# / .NET 8 / .NET Core 3.1 + HTML/JS/JSON/XML  
+> **跨环境支持**：VS Code Copilot / Antigravity / Qoder / DeepSeek Harness / Trae / Cursor
 
 ---
 
-## ⚡ 三大零摩擦调用方式
+## 🗺️ 全生命周期：阶段 × 输入命令 × 触发技能速查矩阵
 
-### 1. 零前缀自然语言自感知 (Zero-Prefix)
-再也不需要输入死板的括号标签！AI 自动根据工作区状态识别意图：
-* 丢入需求 ➔ 自动启动【中书省 ALIGN】
-* 回复决策 ➔ 自动启动【门下省 PLAN】
-* 喊一句“继续/开跑” ➔ 自动进入【尚书省 RUN】
-
-### 2. 统一斜杠指令 (`/sansheng`)
-在 IDE 聊天框中输入 `/sansheng [内容]` 即可驱动全流程：
-```
-/sansheng 帮我把所有列表页做异步导出重构
-/sansheng map   # 重新生成项目 AST 骨架图
-```
-
-### 3. 极速单字符快捷交互 (Shorthand)
-* `c` / `r` ➔ 全自动执行全部任务与测试 (continue/run)
-* `s` / `n` ➔ 单步推进当前任务并汇报 (step/next)
-* `1` / `y` ➔ 交互式 UAT 判定通过 (Passed)
-* `2 报错描述` ➔ 交互式 UAT 判定未通过，工兵原地自愈修复
-* `archive` / `结项` ➔ 触发两级项目归档与永乐大典同步
+| 阶段 | 执行位置 | 开发者输入 (敲什么) | 底层调用的命令 / Skill | 核心产物 / 状态 |
+| :--- | :--- | :--- | :--- | :--- |
+| **0. 环境准备** | 🖥️ 终端 | `sansheng init`<br>`sansheng map` | `csharp-ls`, `codebase-memory-mcp`<br>`codebase-map.js` | `.sansheng/config.json`<br>`.sansheng/codebase_map.md`<br>`.github/copilot-instructions.md` |
+| **1. 中书省 ALIGN** | 💬 IDE 聊天框 | 直接输入需求文本，或：<br>`/sansheng [需求内容]` | **Skill**: `yongle-search` / `yongle-hybrid-search.js`<br>**Tools**: `codebase-map.js`, `tree-sitter` | 四要素微引用质询<br>`[REQ-xx]` 原子清单<br>`[RULE-xx]` 边界铁律 |
+| **1.1 决策对齐** | 💬 IDE 聊天框 | `1A 2B 3A` (单选)<br>`A+B` (组合) / `先B后A` (演进)<br>`修改 Q1 为 B` (插话回溯) | 流式 Markdown 解析<br>自动涟漪影响分析 | 决策确定，自动触发门下省 |
+| **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`<br>**Gate**: `dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>100% 需求覆盖率对账表<br>聊天框 3 行 HUD 进度看板 |
+| **3. 六部 RUN** | 💬 IDE 聊天框 | `c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Test**: `dotnet test --verbosity quiet` | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>自动化质量门禁通过 |
+| **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng uat`<br>卡片判定: `1` 或 `y` (通过)<br>缺陷反馈: `2 <报错/现象描述>` | **Agent**: 原地补写边界测试 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
+| **5. 归档结项** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng archive`<br>聊天框: `archive` 或 `结项` | **Tools**: `shangshu.js` (`closeMilestone`)<br>**Skill**: `yongle-sync` / `yongle-sync-knowledge.js` | `TASK.md` ➔ `.sansheng/archive/`<br>`ROADMAP.md` 标记完成<br>清理临时文件，仓库 100% 纯净 |
 
 ---
 
-## 🛠️ VS Code + GitHub Copilot 专属深度增强
-
-针对主要使用 **VS Code + GitHub Copilot** 的开发者，`sansheng-liubu` 在 `sansheng init` 时会自动注入 **原生深度增强套件**：
+## 📖 阶段实战详解：在什么阶段用什么命令/Skill
 
 ```
- ┌─────────────────────────────────────────────────────────────┐
- │           🏆 sansheng-liubu 针对 VS Code Copilot 专属增强    │
- └──────────────────────────────┬──────────────────────────────┘
-                                │
-   ┌────────────────┬───────────┴────────┬────────────────┐
-   ▼                ▼                    ▼                ▼
-【1. 指令文件注入】 【2. 原生 MCP 工具】 【3. Prompt 模板】 【4. VS Code Tasks/Settings】
-.github/copilot-   .vscode/mcp.json     .github/prompts/  .vscode/settings.json
-instructions.md    打通 CBM 15个工具     /sansheng 双别名   自动开启 chat.promptFiles
-每句对话自动注入    Copilot 直接查调用链  VS Code 原生斜杠   无需手动改配置敲命令
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│ 0. 环境与图谱准备 │ ───> │ 1. 中书省对齐   │ ───> │ 2. 门下省门禁   │ ───> │ 3. 六部执行与自愈│ ───> │ 4. UAT与结项归档│
+│  (CLI 命令)     │      │  (聊天框/Skill) │      │  (TASK.md/门禁) │      │  (工兵/Subagent)│      │  (自愈/永乐同步)│
+└─────────────────┘      └─────────────────┘      └─────────────────┘      └─────────────────┘      └─────────────────┘
 ```
-
-1. **自动注入 `.github/copilot-instructions.md`**：Copilot 每轮对话自动遵循三省六部极简高质铁律（消灭长篇刷屏，强制 3 行 HUD）；
-2. **自动生成 `.vscode/mcp.json`**：将 `codebase-memory-mcp` 直接挂进 VS Code，Copilot 聊天框可原生调用 `get_architecture`、`trace_path` 等 15 个工具；
-3. **原生 Prompt 模板 (`.github/prompts/` & `.vscode/prompts/`)**：VS Code Copilot 聊天框输入 `/sansheng` 或 `/sansheng-liubu` 即可一键唤醒自感知工作流；
-4. **自动配置 `.vscode/settings.json` 与 `.vscode/tasks.json`**：自动启用 `chat.promptFiles: true` 确保斜杠指令立即可用，一键绑定自动化测试与骨架扫描。
 
 ---
 
-## 📦 一键安装与环境配置指南
+### 阶段 0：环境准备与项目接入 (Setup & Code Intelligence)
 
-三省六部原生深度整合了 **微观编译器 (LSP)** 与 **宏观知识图谱 (CBM)** 双引擎，建议在开发机上一键安装好全套底座：
+在终端（Terminal）进入你的业务项目根目录（如 `CatFoodManager`）：
 
-```
- ┌─────────────────────────────────────────────────────────────┐
- │                🏆 三省六部“双引擎”代码智能体系               │
- └──────────────────────────────┬──────────────────────────────┘
-                                │
-        ┌───────────────────────┴───────────────────────┐
-        ▼                                               ▼
-【微观层: csharp-ls (LSP 编译器)】           【宏观层: CBM (知识图谱 MCP)】
-─────────────────────────────────           ─────────────────────────────────
-• 0-Token 原生跨文件原子重命名                • `get_architecture`: 秒级透视分层与入口
-• 100% 官方 Roslyn 语法与类型诊断             • `trace_path`: 双向追踪 10 层调用链
-• 0 毫秒精准跳转接口实现类                   • `detect_changes`: 评估 Git 改动爆炸半径
-```
-
-### 1. 全局安装三省六部核心引擎
-```bash
-npm install -g sansheng-liubu
-```
-
-### 2. 安装 C# / .NET 官方语言服务器 (LSP 编译器微观精度)
-```bash
-dotnet tool install -g csharp-ls
-```
-
-### 3. 安装 CBM 知识图谱引擎 (宏观架构与 15 个 MCP 工具)
-```bash
-npm install -g codebase-memory-mcp
-```
-*(Windows PowerShell 也可直接运行官方脚本: `Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1; Unblock-File .\install.ps1; .\install.ps1`)*
-
-### 4. 安装 Vue 3 前端语言服务器 (可选)
-```bash
-npm install -g @vue/language-server
-```
-
-### 5. 一键自检全套代码智能环境
-在终端任意目录下运行：
+#### 1. 初始化三省六部工作区
 ```bash
 sansheng init
-# 或单独验证 LSP 协议:
-npm run test:lsp
 ```
+- **执行效果**：
+  - 自动创建 `.sansheng/` 私有目录（含 `config.json` 与 `ROADMAP.md`）；
+  - 自动检测并注入 VS Code Copilot 全套规则（`.github/copilot-instructions.md`、`.vscode/mcp.json`、`.vscode/tasks.json`、`.github/prompts/sansheng.prompt.md`）；
+  - 自动将临时缓存加入 `.gitignore`，杜绝 Git 污染。
 
----
-
-## 🚀 现有项目（Existing Projects）快速接入实战指南
-
-当环境安装完成后，对于你本地已有的真实业务项目（如 `D:\...\02.CatFoodManager`），仅需 **3 步** 即可无缝激活全套体系：
-
-### 步骤 1：进入已有项目根目录并初始化
-```bash
-cd "D:\your-existing-project"
-sansheng init
-```
-👉 **CLI 会全自动完成环境对账并自动注入 VS Code / Copilot 增强**！
-
-### 步骤 2：建立项目代码地图与 CBM 知识图谱（双擎初始化）
-```bash
-# 1. 提取 AST 纯文本代码符号骨架 (生成 .sansheng/codebase_map.md，Token 物理压缩 95%+)
-sansheng map
-
-# 2. 为项目构建 CBM 知识图谱数据库 (秒级解析全局类节点、函数节点与调用链边)
-codebase-memory-mcp cli index_repository
-```
-> 💡 **可选：打开浏览器看 3D 图谱**：  
-> 运行 `codebase-memory-mcp --ui=true`，浏览器访问 `http://localhost:9749` 即可 3D 旋转查看调用拓扑！
-
-### 步骤 3：在 AI IDE 中直接对话开发（双擎协同流）
-在 VS Code Copilot / Antigravity / Qoder 对话框中，**直接用大白话输入需求**：
-1. **中书省 ALIGN**：*“我想给 CatFoodManager 加个库存预警定时任务”* ➔ AI 结合 CBM 图谱与骨架秒级透视分层，精准提问与提炼铁律；
-2. **门下省 PLAN**：回复 *“1A 2B 3A”* ➔ AI 自动生成带 `dotnet test` 门禁的 `.sansheng/TASK.md`（聊天框仅回显 3 行 HUD）；
-3. **六部 RUN**：回复 *“c”* ➔ AI 调用 `csharp-ls` 纯净编写代码，跑通全部测试；
-4. **UAT 自愈**：AI 弹出单项验收，如遇 Bug 回复 *“2 描述”* ➔ 原地写用例修复并复测，通过后自动沉淀心得至《永乐大典》；
-5. **结项归档**：回复 *“archive”* ➔ 两级自动归档，代码仓库恢复 100% 纯净。
-
----
-
-## 🗺️ Codebase Mapping (AST 代码骨架拓扑提取原理)
-
-针对庞大老工程，传统 AI 往往盲读几万行源码导致 **Token 瞬间爆炸并引发上下文截断**。  
-`sansheng-liubu` 原生内置了基于 **AST 语法树的轻量代码拓扑提取器**：
-
-* **C# / .NET**：秒级遍历解析 `.cs` 源码，提取命名空间、`class` / `interface` 声明、方法入参签名与特性注解，**彻底剥离函数体 `{ ... }` 细节**；
-* **Vue 3 SFC**：精准提取 `<script setup>` 内的 `defineProps`、`defineEmits`、`defineExpose` 与核心函数签名；
-* **实测效果**：**Token 物理压缩率超过 95%**！把几万行的复杂工程压缩成一张仅占 1~2k Token 的超高密度架构符号图。
-
-一键提取命令：
+#### 2. 生成 AST 代码符号拓扑骨架 (Token 压缩率 > 95%)
 ```bash
 sansheng map
 ```
-*自动在 `.sansheng/codebase_map.md` 生成（已自动加入 `.gitignore`，不污染 Git 提交）。*
+- **底层命令**：调用 `src/tools/codebase-map.js`
+- **执行效果**：秒级递归解析 C#（类/方法签名/特性）与 Vue 3 SFC（`props`/`emits`/函数），在 `.sansheng/codebase_map.md` 生成高密度骨架，供后续 Agent 精准定位，杜绝盲读源码。
+
+#### 3. (可选) 多 AI IDE 规则双向同步
+```bash
+# 自动嗅探 Trae / CatPaw / Qoder / Cursor 规则并转译为 Copilot 规则
+sansheng sync-rules
+
+# 反向导出集中规则至指定 IDE
+sansheng sync-rules --export trae,qoder,cursor
+```
 
 ---
 
-## 💾 数据持久化与存储位置说明
+### 阶段 1：中书省 【ALIGN 需求对齐阶段】
 
-* **项目 AST 骨架图**：保存在项目私有目录 [`.sansheng/codebase_map.md`](.sansheng/codebase_map.md)（透明 Markdown 纯文本）；
-* **项目配置与归档**：分别保存在 `.sansheng/config.json` 与 `.sansheng/archive/`；
-* **CBM 知识图谱数据库**：持久化保存在本地物理固态硬盘 `~/.cache/codebase-memory-mcp/`（SQLite `.db` 磁盘文件，**电脑重启绝不丢失**）。
+打开 IDE 聊天框（VS Code Copilot / Antigravity / Qoder）：
+
+#### 1. 丢入原始需求（唤醒中书省）
+- **开发者在聊天框输入**：
+  ```text
+  /sansheng 帮我给列表页实现异步流式导出，支持防 OOM、断点续传与下载中心抽屉
+  ```
+  *(注：亦可直接用自然语言随口输入，AI 自动感知进入 ALIGN 阶段)*
+
+- **底层自动触发的 Skill 与工具**：
+  - **Skill `yongle-search` / `yongle-hybrid-search.js`**：静默检索《永乐大典》中关于 `.NET 8 异步流式导出`、`Vue 3 大数据表格` 的历史避坑经验；
+  - **工具 `codebase-map.js`**：结合 `.sansheng/codebase_map.md` 定位改动文件入口；
+  - **AI 行为规范**：严格执行 **§13 非阻塞 Markdown 优先铁律**（严禁弹出阻塞型表单模态窗，使用流式 Markdown）。
+
+- **AI 回显输出格式（四要素微引用）**：
+  ```markdown
+  #### ❓ 问题 1：【大数据量导出防 OOM 策略】
+  * 📍 需求坐标：`src/Services/ExportService.cs:L45`
+  * 📝 原文微引用：“单次最大支持 100 万行导出...”
+  * 🔍 疑点/两难：内存一次性加载易触发 OOM，流式分片写盘需要配合后台异步作业。
+  * 💡 决策选项：
+    - **[选项 A (推荐)]** MediatR 管道拦截 + Hangfire 后台异步作业 + Redis SSE 流式进度
+    - **[选项 B]** 本地内存 BlockingCollection 单机队列
+  ```
+
+#### 2. 用户快速回复与插话回溯
+- **快速单选**：输入 `1A 2B 3A`
+- **三态高级语法**：
+  - 组合分层：`1(A+B)`
+  - 决裁矩阵：`纠结 1A/1B`
+  - 阶段演进：`先 1B 后 1A`
+- **全局插话回溯（§14 涟漪分析）**：
+  - 用户随时输入：`修改 Q1 为 B`
+  - AI 立即优先响应，并自动扫描下游依赖，输出受影响节点的联动调整建议。
 
 ---
 
-## 🛠️ CLI 常用命令集
+### 阶段 2：门下省 【PLAN 计划与质量门禁阶段】
 
-| 命令 | 描述 |
-| :--- | :--- |
-| `sansheng init` | 初始化当前工作区三省六部配置（统一收敛至 `.sansheng/`，自动注入 VS Code 增强） |
-| `sansheng sync-rules` | 自动嗅探 Trae-CN / CatPaw / Qoder / Cursor 规则并智能转译同步至 VS Code Copilot |
-| `sansheng update` | 检查最新版本、无损增量同步工作区配置与 IDE 技能规则 |
-| `sansheng map` | 提取当前项目 AST 符号骨架地图 (`.sansheng/codebase_map.md`) |
-| `sansheng status` | 极简查看当前活跃 Phase 进度 HUD |
-| `sansheng uat` | 启动交互式单项 UAT 验收与自愈修复循环 |
-| `sansheng archive` | 触发两级项目结项归档并同步至《永乐大典》 |
+当决策对齐完成，门下省自动接管：
+
+#### 1. 生成活跃任务看板与质量门禁
+- **开发者在聊天框输入**：`开跑`、`定稿` 或 `继续`
+- **底层落盘状态文件**：`.sansheng/TASK.md`（**强制控制在 150 行以内**）
+- **门禁定义清单 (Quality Gates)**：
+  1. **自动化单测门禁**：`dotnet test --verbosity quiet`（0 Failed, 0 Error） / `npx vitest run`（100%通过）；
+  2. **边界反例用例**：针对 `[RULE-01]` 至 `[RULE-04]` 的专用拦截测试方法；
+  3. **一键冒烟命令**：`dotnet test --filter "Category=Smoke"`；
+  4. **人工 UAT 验收项**：`[UAT-01]`、`[UAT-02]`。
+- **100% 覆盖率对账**：严格校验 `[REQ-01 ~ xx]` 是否 100% 绑定到各 Wave 的具体 Task。
+
+#### 2. 对话框极简 3 行 HUD 回显
+AI 严禁长篇刷屏输出伪代码，仅回显 3 行：
+```markdown
+📊 [阶段进度] Wave 1/2: 核心导出管道与 Hangfire 作业 (.NET 8)
+🎯 [门禁状态] dotnet test (0/15) | UAT 项 (0/3)
+👉 回复 c (全自动开跑) 或 s (单步推进)
+```
+
+#### 3. (可选) 终端随时查看进度
+```bash
+sansheng status
+```
+
+---
+
+### 阶段 3：尚书省与六部 【RUN 纯净执行与测试阶段】
+
+#### 1. 启动执行
+- **开发者在聊天框输入**：
+  - `c` 或 `r` ➔ 全自动执行当前 Phase 的全部 Task 并跑通测试
+  - `s` 或 `n` ➔ 单步执行当前 Task 并汇报
+
+#### 2. 底层工兵执行机制
+- **纯净工兵派生**：通过 `invoke_subagent` 或 `bin/worker.js` 派生独立上下文，每次仅携带当前 Task 与 1~2 个源码文件（0 历史 Token 负担）；
+- **0-Token 物理重构**：
+  - 跨文件重命名/跳转调用 LSP 原生指令（`csharp-ls` / `vue-language-server`）；
+  - 代码格式化调用本地命令（`dotnet format` / `npx biome check --write`），严禁消耗 LLM Token 调缩进；
+  - 源码写入调用局部 Hunk 替换（`replace_file_content`）；
+- **四级语义权限保护 (§15)**：
+  - 🟢 L1 只读 (`view_file`/`grep`) ➔ 自动放行
+  - 🟡 L2 验证 (`dotnet test`/`vitest`) ➔ 自动放行
+  - 🟠 L3 改写 (当前项目源码修改) ➔ 自动放行 + Git 本地保护
+  - 🔴 L4 高危 (`rm -rf`/`git push -f`/删库/越界) ➔ **强制打断请求人工确认**；
+- **弹性自愈升配**：工兵单任务测试连续 2 次失败时，自动召唤 Tier-1 旗舰大脑介入排查修复。
+
+---
+
+### 阶段 4：交互式 UAT 验收与自愈复盘闭环
+
+所有代码与自动化单元测试通过后，触发 UAT 交付门禁：
+
+#### 1. 方式 A：聊天框单项卡片验收
+AI 依次弹出当前 UAT 项（如 `[UAT-01: 超过 100 万行导出熔断提示]`）：
+- **判定通过**：输入 `1` 或 `y` ➔ 打勾 `- [x] UAT-01: Passed`，自动推进下一项；
+- **判定不通过**：输入 `2 导出时页面没有弹出 4001 错误提示框`
+  - 🤖 **工兵立即自愈**：
+    1. 定位源码并在测试工程补写 `Export_OverLimit_ShouldReturn4001` 复现用例；
+    2. 修复控制器/前端代码并跑通 `dotnet test`；
+    3. 原地重新提示用户复测；
+  - 💡 **复测通过后**：自动触发 Skill `yongle-postmortem` 将本次排查与修复经验沉淀至《永乐大典》。
+
+#### 2. 方式 B：终端交互式独立验收
+```bash
+sansheng uat
+```
+在命令行控制台中逐项判定与自愈复测。
+
+---
+
+### 阶段 5：两级自动归档与结项纯净化
+
+当所有 `[UAT-xx]` 全部标记为 Passed 后：
+
+#### 1. 触发结项
+- **开发者输入**：
+  - 聊天框输入：`archive` 或 `结项` 或 `完工`
+  - 或终端运行：`sansheng archive`
+
+#### 2. 底层自动化执行动作
+1. **阶段滑动归档 (Phase Archiving)**：当前 `TASK.md` 备份至 `.sansheng/archive/phase-final-2026-xx-xx.md`；
+2. **清理活跃看板**：安全删除活跃 `TASK.md`，防止下一轮对话上下文膨胀；
+3. **标记项目总纲**：自动在 `.sansheng/ROADMAP.md` 中标记本 Phase 为 `[COMPLETED 2026-xx-xx ✅]`；
+4. **仓库 100% 纯净化**：自动清理 `.sansheng/codebase_map.md` 及临时缓存；
+5. **永乐大典云端同步**：自动调用 `yongle-sync-knowledge.js` / Skill `yongle-sync`，将本次项目沉淀的全部经验推送到 Git 远程知识库。
+
+---
+
+## 🛠️ CLI 常用命令速查表
+
+| 命令 | 适用场景 | 对应三省六部底层逻辑 |
+| :--- | :--- | :--- |
+| `sansheng init` | 首次接入或新项目初始化 | 嗅探环境、注入 VS Code Copilot 全套规则与 MCP 配置 |
+| `sansheng map` | 源码结构变动时重新扫描 | 提取 AST 骨架生成 `.sansheng/codebase_map.md` (压缩率>95%) |
+| `sansheng sync-rules` | 多 IDE 协同开发时 | 嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译至 Copilot |
+| `sansheng sync-rules --export <ide>` | 导出规则至其他 IDE | 将集中维护的规则导出为 `.trae/rules.md` / `.cursorrules` 等 |
+| `sansheng status` | 随时查看进度 | 查看当前活跃 Phase 的 3 行 HUD 任务进度看板 |
+| `sansheng uat` | 命令行交互验收 | 启动交互式单项 UAT 验收与自愈修复循环 |
+| `sansheng archive` | 模块全部交付结项时 | 触发两级归档、更新 ROADMAP、清理缓存、同步《永乐大典》 |
+| `sansheng update` | 升级工作流引擎 | 检查最新版本、无损增量合并配置与 IDE Prompt 模板 |
 
 ---
 

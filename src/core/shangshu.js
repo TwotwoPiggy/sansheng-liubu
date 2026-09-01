@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { YongleBridge } from '../tools/yongle-bridge.js';
 
 /**
  * 尚书省 (Shangshu) - 掌管执行与状态统领 (RUN 与归档阶段)
@@ -22,6 +23,8 @@ export class Shangshu {
     this.roadmapPath = fs.existsSync(sanshengRoadmap) ? sanshengRoadmap : (fs.existsSync(rootRoadmap) ? rootRoadmap : sanshengRoadmap);
 
     this.archiveDir = path.join(sanshengDir, 'archive');
+    this.sanshengDir = sanshengDir;
+    this.yongle = new YongleBridge();
   }
 
   /**
@@ -52,18 +55,88 @@ export class Shangshu {
   }
 
   /**
-   * 项目结项全量归档 (Milestone Close)
+   * 更新 ROADMAP.md：将当前活跃 Phase 标记为已完成 (SPEC §3)
+   */
+  markRoadmapPhaseComplete() {
+    if (!fs.existsSync(this.roadmapPath)) return;
+    try {
+      let content = fs.readFileSync(this.roadmapPath, 'utf-8');
+      const timestamp = new Date().toISOString().slice(0, 10);
+      // 匹配第一个未完成且标记为活跃的 Phase 行
+      const updated = content.replace(
+        /- \[ \] (.+?)(?:\[(?:当前活跃|Active)\s*🔥\]|\`\[(?:当前活跃|Active)\s*🔥\]\`)/,
+        `- [x] $1\`[COMPLETED ${timestamp} ✅]\``
+      );
+      if (updated !== content) {
+        fs.writeFileSync(this.roadmapPath, updated, 'utf-8');
+        console.log(`📋 [尚书省] 已在 ROADMAP.md 中标记当前阶段为完成。`);
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * 清理临时文件与缓存，确保代码仓库 100% 纯净 (SPEC §3)
+   */
+  cleanTemporaryFiles() {
+    const tempFiles = ['codebase_map.md'];
+    const tempDirs = ['cache'];
+    let cleaned = 0;
+
+    for (const f of tempFiles) {
+      const p = path.join(this.sanshengDir, f);
+      if (fs.existsSync(p)) {
+        try { fs.unlinkSync(p); cleaned++; } catch (_) {}
+      }
+    }
+    for (const d of tempDirs) {
+      const p = path.join(this.sanshengDir, d);
+      if (fs.existsSync(p)) {
+        try { fs.rmSync(p, { recursive: true, force: true }); cleaned++; } catch (_) {}
+      }
+    }
+    if (cleaned > 0) {
+      console.log(`🧹 [尚书省纯净化] 已清理 ${cleaned} 个临时文件/目录，仓库恢复纯净。`);
+    }
+  }
+
+  /**
+   * 触发永乐大典同步 (SPEC §7)
+   */
+  syncToYongle() {
+    console.log(`💡 正在检查《永乐大典》同步环境...`);
+    this.yongle.syncKnowledge();
+  }
+
+  /**
+   * 项目结项全量归档 (Milestone Close) (SPEC §3 完整实现)
+   * 1. 归档 TASK.md → archive/
+   * 2. 删除活跃 TASK.md
+   * 3. 更新 ROADMAP.md 标记完成
+   * 4. 清理临时文件恢复仓库纯净
+   * 5. 触发永乐大典同步
    */
   closeMilestone() {
+    // 1. 归档
     this.archivePhase('final');
+
+    // 2. 清理活跃任务看板
     if (fs.existsSync(this.taskPath)) {
       try {
         fs.unlinkSync(this.taskPath);
         console.log(`🧹 [尚书省纯净化] 已安全清理当前活跃任务看板: ${path.relative(this.cwd, this.taskPath)}`);
       } catch (_) {}
     }
+
+    // 3. 更新 ROADMAP.md
+    this.markRoadmapPhaseComplete();
+
+    // 4. 清理临时文件
+    this.cleanTemporaryFiles();
+
+    // 5. 触发永乐大典同步
+    this.syncToYongle();
+
     console.log(`🎉 [尚书省结项] 项目开发全链路圆满完成！`);
-    console.log(`💡 正在触发《永乐大典》云端双向同步 (yongle-sync)...`);
   }
 }
 

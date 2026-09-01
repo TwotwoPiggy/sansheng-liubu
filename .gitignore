@@ -6,6 +6,6 @@ npm-debug.log*
 .codebase_map.md
 .sansheng/codebase_map.md
 .sansheng/cache/
+.planning/
 dist/
 coverage/
-
