@@ -11,7 +11,7 @@
 
 | 阶段 | 执行位置 | 开发者输入 (敲什么) | 底层调用的命令 / Skill | 核心产物 / 状态 |
 | :--- | :--- | :--- | :--- | :--- |
-| **0. 环境准备** | 🖥️ 终端 | `sansheng init`<br>`sansheng map` | `csharp-ls`, `codebase-memory-mcp`<br>`codebase-map.js` | `.sansheng/config.json`<br>`.sansheng/codebase_map.md`<br>`.github/copilot-instructions.md` |
+| **0. 环境准备** | 🖥️ 终端 | `sansheng init`<br>`sansheng map`<br>`sansheng update` | `csharp-ls`, `codebase-memory-mcp`<br>`codebase-map.js`, `updater.js` | `.sansheng/config.json`<br>`.sansheng/codebase_map.md`<br>NPM 原地热升级与规则自愈 |
 | **1. 中书省 ALIGN** | 💬 IDE 聊天框 | 直接输入需求文本，或：<br>`/sansheng [需求内容]` | **Skill**: `yongle-search` / `yongle-hybrid-search.js`<br>**Tools**: `codebase-map.js`, `tree-sitter` | 四要素微引用质询<br>`[REQ-xx]` 原子清单<br>`[RULE-xx]` 边界铁律 |
 | **1.1 决策对齐** | 💬 IDE 聊天框 | `1A 2B 3A` (单选)<br>`A+B` (组合) / `先B后A` (演进)<br>`修改 Q1 为 B` (插话回溯) | 流式 Markdown 解析<br>自动涟漪影响分析 | 决策确定，自动触发门下省 |
 | **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`<br>**Gate**: `dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>100% 需求覆盖率对账表<br>聊天框 3 行 HUD 进度看板 |
@@ -59,6 +59,12 @@ sansheng sync-rules
 
 # 反向导出集中规则至指定 IDE
 sansheng sync-rules --export trae,qoder,cursor
+```
+
+#### 4. 智能检测与原地升级 (无需卸载)
+```bash
+# 从 NPM 官方源自动检测最新版本并原地覆盖升级，无损同步工作区配置与 IDE 规则
+sansheng update
 ```
 
 ---
@@ -276,11 +282,20 @@ pnpm update sansheng-liubu
 2. 找到 `sansheng-liubu`，若有新版本将显示 **Update** 按钮；
 3. 点击 **Update**，Cordis 运行时将自动完成无损热重载（Hot-Reload），无需重启 DSH 后台服务。
 
-#### 方式 C：通过三省六部内置 CLI 升级
+#### 方式 C：通过三省六部内置 CLI 原地升级
 ```bash
+# 自动检测 npm 远端版本并原地覆盖升级 (无须卸载再安装)，随后增量同步工作区配置与 IDE 规则
 sansheng update
+
+# 仅检查是否有新版本
+sansheng update --check
+
+# 跳过 npm 包更新，仅同步工作区配置与 IDE 提示词规则
+sansheng update --skip-npm
+
+# 强制从 NPM 重新安装最新版
+sansheng update --force
 ```
-- 自动检查 npm 注册表最新版本并无损增量同步工作区配置与 Prompt 模板。
 
 ---
 
@@ -350,7 +365,7 @@ DSH 模型上下文可随时调用以下受控工具：
 | `sansheng status` | 随时查看进度 | 查看当前活跃 Phase 的 3 行 HUD 任务进度看板 |
 | `sansheng uat` | 命令行交互验收 | 启动交互式单项 UAT 验收与自愈修复循环 |
 | `sansheng archive` | 模块全部交付结项时 | 触发两级归档、更新 ROADMAP、清理缓存、同步《永乐大典》 |
-| `sansheng update` | 升级工作流引擎 | 检查最新版本、无损增量合并配置与 IDE Prompt 模板 |
+| `sansheng update` | 升级工作流引擎 | 从 NPM 检查并原地更新至最新版 (无须卸载)，无损增量合并配置与 IDE Prompt 模板 |
 
 ---
 

@@ -15,7 +15,7 @@ import { RuleSync } from '../src/tools/rule-sync.js';
 const args = process.argv.slice(2);
 const command = args[0] || 'help';
 
-console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v1.2`);
+console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v1.2.1`);
 
 async function main() {
   switch (command) {
@@ -28,7 +28,7 @@ async function main() {
       break;
     case 'update':
     case 'upgrade':
-      await runUpdate();
+      await runUpdate(args.slice(1));
       break;
     case 'map':
       generateMap();
@@ -180,7 +180,8 @@ function showHelp() {
   sansheng init                 初始化三省六部工作区 (收敛配置与总纲至 .sansheng/，注入 VS Code 增强)
   sansheng sync-rules           嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译同步至 VS Code Copilot
   sansheng sync-rules --export  反向导出集中规则至指定 IDE (如 --export trae,catpaw,qoder)
-  sansheng update               检查最新版本、无损同步工作区配置与 IDE 技能规则
+  sansheng update               从 NPM 检查并原地升级至最新版本，无损增量同步工作区配置与 IDE 规则
+                                (参数: --check 仅检查版本, --skip-npm 仅同步工作区, --force 强制重装)
   sansheng map                  提取当前项目 AST 符号骨架 (.sansheng/codebase_map.md)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环

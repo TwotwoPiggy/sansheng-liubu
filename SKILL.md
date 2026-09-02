@@ -10,7 +10,7 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
 ## 交互模式与快捷键
 
 - **零前缀感知**：根据用户自然语言输入，自动切换中书省(ALIGN)与六部(RUN)阶段。
-- **统一指令**：输入 `/sansheng [内容]` 自动路由生命周期；`/sansheng map` 更新拓扑图；`/sansheng sync-rules` 转译规则。
+- **统一指令**：输入 `/sansheng [内容]` 自动路由生命周期；`/sansheng map` 更新拓扑图；`/sansheng sync-rules` 转译规则；`/sansheng update` 从 npm 原地更新最新版并同步工作区。
 
 | 快捷键 | 功能描述 |
 |---|---|

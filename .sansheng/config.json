@@ -11,5 +11,14 @@
   "stack": {
     "backend": "dotnet8",
     "frontend": "vue3-element"
+  },
+  "code_intelligence": {
+    "cbm_enabled": true,
+    "lsp_enabled": true
+  },
+  "yongle_dadian": {
+    "enabled": true,
+    "auto_recall_on_align": true,
+    "auto_postmortem_on_fix": true
   }
 }
