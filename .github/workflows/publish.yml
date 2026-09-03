@@ -19,6 +19,9 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Install Dependencies
+        run: npm install --no-audit || true
+
       - name: Run Unit Tests & Self Verification
         run: |
           npm test
