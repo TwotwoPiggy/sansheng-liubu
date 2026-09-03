@@ -39,7 +39,7 @@ async function main() {
       break;
     case 'html':
     case 'uat-html':
-      handleExportHtml();
+      handleExportHtml(args[1]);
       break;
     case 'uat':
       try { exportUATHtml(); } catch (e) {}
@@ -181,8 +181,8 @@ function showStatus() {
   console.log(`\n👉 回复 c (全自动推进) 或 s (单步推进)`);
 }
 
-function handleExportHtml() {
-  const res = exportUATHtml();
+function handleExportHtml(targetPath) {
+  const res = exportUATHtml({ taskPath: targetPath });
   if (res.success) {
     console.log(`\n🎉 ${res.message}`);
     console.log(`💡 提示: 您可以直接用默认浏览器双击打开此 HTML 文件，体验鼠标勾选与自动静默保存！\n`);
@@ -201,7 +201,8 @@ function showHelp() {
                                 (参数: --check 仅检查版本, --skip-npm 仅同步工作区, --force 强制重装)
   sansheng map                  提取当前项目 AST 符号骨架 (.sansheng/codebase_map.md)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
-  sansheng html                 0 Token 将 TASK.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
+  sansheng html [path]          0 Token 将已有项目的 task.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
+                                (可选指定路径，如: sansheng html ./task.md 或全向自动探测)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环
   sansheng archive              执行项目两级归档并同步至《永乐大典》
   `);

@@ -376,29 +376,59 @@ export function compileUATToHtml(markdownContent, options = {}) {
  */
 export function exportUATHtml(options = {}) {
   const cwd = options.cwd || process.cwd();
-  const sanshengTask = path.join(cwd, '.sansheng', 'TASK.md');
-  const rootTask = path.join(cwd, 'TASK.md');
-  const taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : null);
+
+  // 1. 若显式指定了 taskPath，优先解析
+  let taskPath = null;
+  if (options.taskPath) {
+    const candidate = path.isAbsolute(options.taskPath) ? options.taskPath : path.join(cwd, options.taskPath);
+    if (fs.existsSync(candidate)) {
+      taskPath = candidate;
+    }
+  }
+
+  // 2. 自动多向智能探测已有项目中的常见路径与大小写 (TASK.md, task.md, Task.md)
+  if (!taskPath) {
+    const candidates = [
+      path.join(cwd, '.sansheng', 'TASK.md'),
+      path.join(cwd, '.sansheng', 'task.md'),
+      path.join(cwd, 'TASK.md'),
+      path.join(cwd, 'task.md'),
+      path.join(cwd, 'Task.md'),
+      path.join(cwd, '.tasks', 'TASK.md'),
+    ];
+    taskPath = candidates.find(p => fs.existsSync(p)) || null;
+  }
 
   if (!taskPath) {
-    return { success: false, message: '未找到活跃 TASK.md', outputPath: null, uatCount: 0 };
+    return {
+      success: false,
+      message: '未在当前工作区检测到 TASK.md（已检查 .sansheng/TASK.md, TASK.md, task.md 等）。您可通过参数指定具体文件路径，例如: sansheng html ./path/to/task.md',
+      outputPath: null,
+      uatCount: 0
+    };
   }
 
   const content = fs.readFileSync(taskPath, 'utf-8');
   const html = compileUATToHtml(content, options);
 
-  // 确定输出目录：若存在 .sansheng 则放入 .sansheng/uat.html，否则放入同级目录
-  const outDir = fs.existsSync(path.join(cwd, '.sansheng')) ? path.join(cwd, '.sansheng') : path.dirname(taskPath);
-  const outputPath = options.outputPath || path.join(outDir, 'uat.html');
+  // 确定输出目录：若存在 .sansheng 且当前处于该工程，则优先放入 .sansheng/uat.html，否则放入 task 文件的同级目录
+  let defaultOutDir = path.dirname(taskPath);
+  if (fs.existsSync(path.join(cwd, '.sansheng'))) {
+    defaultOutDir = path.join(cwd, '.sansheng');
+  }
+  const outputPath = options.outputPath
+    ? (path.isAbsolute(options.outputPath) ? options.outputPath : path.join(cwd, options.outputPath))
+    : path.join(defaultOutDir, 'uat.html');
 
   fs.writeFileSync(outputPath, html, 'utf-8');
   const items = parseUATBlocks(content);
 
   return {
     success: true,
+    taskPath,
     outputPath,
     uatCount: items.length,
-    message: `已成功将 ${items.length} 项 UAT 验收清单零 Token 编译为交互式看板: ${path.relative(cwd, outputPath)}`
+    message: `已成功将 [${path.relative(cwd, taskPath) || path.basename(taskPath)}] 中的 ${items.length} 项 UAT 清单零 Token 编译为交互式看板: ${path.relative(cwd, outputPath) || path.basename(outputPath)}`
   };
 }
 

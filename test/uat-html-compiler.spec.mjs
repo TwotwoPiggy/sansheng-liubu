@@ -75,4 +75,28 @@ describe('0 Token 本地 UAT HTML 验收看板编译器测试套件 (uat-html-co
     // 清理临时文件
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
+
+  it('4. exportUATHtml 支持显式指定 taskPath 以及自动探测已有项目中的小写 task.md', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sansheng-legacy-'));
+    const lowerTask = path.join(tmpDir, 'task.md');
+    fs.writeFileSync(lowerTask, sampleMarkdown, 'utf-8');
+
+    // 自动探测已有项目中的小写 task.md
+    const resAuto = exportUATHtml({ cwd: tmpDir });
+    assert.strictEqual(resAuto.success, true);
+    assert.strictEqual(resAuto.uatCount, 2);
+    assert.ok(fs.existsSync(path.join(tmpDir, 'uat.html')));
+
+    // 显式指定自定义路径
+    const customTask = path.join(tmpDir, 'custom-feature.md');
+    fs.writeFileSync(customTask, sampleMarkdown, 'utf-8');
+    const resCustom = exportUATHtml({
+      cwd: tmpDir,
+      taskPath: './custom-feature.md'
+    });
+    assert.strictEqual(resCustom.success, true);
+    assert.strictEqual(resCustom.uatCount, 2);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 });

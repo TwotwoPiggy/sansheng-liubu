@@ -180,9 +180,18 @@ sansheng status
 #### 1. 方式 A：0 Token 本地交互式 HTML 验收看板（⭐ 最爽体验：浏览器鼠标点选）
 无需启动常驻服务或占用端口，纯本地 3ms 瞬间编译：
 ```bash
+# 1. 当前项目直接生成（全向自动探测 .sansheng/TASK.md, TASK.md, task.md 等）
 sansheng html
+
+# 2. 已有项目或指定任意文件路径编译
+sansheng html ./path/to/task.md
+sansheng html D:/Projects/MyService/TASK.md
+
+# 3. 免全局安装在已有项目中通过 npx 快速调用
+npx sansheng-liubu html
 ```
-- **双击即开**：直接用 Chrome / Edge 双击打开 `.sansheng/uat.html`；
+- **已有项目全格式兼容**：无论是新规范的标准四要素用例，还是已有项目中的单行老格式用例（如 `- [ ] [UAT-01] 导出正常通过`），均能自动向下兼容并生成可交互勾选卡片；
+- **双击即开**：直接用 Chrome / Edge 双击打开生成的 `uat.html`；
 - **鼠标直选与自动静默写回**：点击网页顶部的 **【📁 关联本地 TASK.md】** 授权一次，之后在网页上**每用鼠标勾选/取消一项，浏览器利用原生 File System Access API 自动实时写回磁盘的 `TASK.md`**（自动更新 `- [x]`）；
 - **四要素卡片与进度计算**：直观展示前置、步骤与高亮的 🎯 PRD 预期对照，实时展示通过百分比（如 `67% Passed`）；
 - **一键缺陷反馈**：点击卡片下方“记录反馈”，输入偏差后点击“复制自愈指令”，直接发给 AI 触发代码修复。
