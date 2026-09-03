@@ -5,6 +5,7 @@ npm-debug.log*
 .tasks/archive/
 .codebase_map.md
 .sansheng/codebase_map.md
+.sansheng/codebase_index.json
 .sansheng/cache/
 .planning/
 dist/

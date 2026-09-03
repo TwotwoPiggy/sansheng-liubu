@@ -45,12 +45,23 @@ sansheng init
   - 自动检测并注入 VS Code Copilot 全套规则（`.github/copilot-instructions.md`、`.vscode/mcp.json`、`.vscode/tasks.json`、`.github/prompts/sansheng.prompt.md`）；
   - 自动将临时缓存加入 `.gitignore`，杜绝 Git 污染。
 
-#### 2. 生成 AST 代码符号拓扑骨架 (Token 压缩率 > 95%)
+#### 2. 生成双层 AST 代码符号与依赖拓扑地图 (Token 压缩率 > 95%)
 ```bash
+# 全库构建双层拓扑地图与结构化索引 (毫秒级增量指纹缓存)
 sansheng map
+
+# 针对指定核心模块提取局部依赖邻居切片 (JIT Slice，中书省/六部按需消耗 ~500 Token)
+sansheng map --focus src/Services/ExportService.cs
+
+# (可选) 手动清除增量缓存
+sansheng map --clear-cache
 ```
 - **底层命令**：调用 `src/tools/codebase-map.js`
-- **执行效果**：秒级递归解析 C#（类/方法签名/特性）与 Vue 3 SFC（`props`/`emits`/函数），在 `.sansheng/codebase_map.md` 生成高密度骨架，供后续 Agent 精准定位，杜绝盲读源码。
+- **执行效果**：
+  - **Tier 1 (人类与模型可读骨架)**：生成 `.sansheng/codebase_map.md`，内含模块拓扑概览、核心拓扑枢纽（Top Hubs）与双向依赖/被依赖标注；
+  - **Tier 2 (机器结构化索引)**：生成 `.sansheng/codebase_index.json`，供 Agent 工具链极速按需读取；
+  - **⚡ 增量缓存加速**：通过 `.sansheng/cache/map_cache.json` 自动跳过未修改文件，二次执行仅需数十毫秒；
+  - **🎯 动态焦点切片**：支持 `--focus <file>` 动态按预算（Token Budget）裁剪生成高聚焦的局部子图，彻底避免大文件撑爆上下文。
 
 #### 3. (可选) 多 AI IDE 规则双向同步
 ```bash

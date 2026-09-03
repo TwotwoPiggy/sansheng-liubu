@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { extractCodebaseMap } from '../src/tools/codebase-map.js';
+import { extractCodebaseMap, queryFocusedMap, clearMapCache } from '../src/tools/codebase-map.js';
 import { runInteractiveUAT } from '../src/core/uat-runner.js';
 import { exportUATHtml } from '../src/core/uat-html-compiler.js';
 import { executeArchive } from '../src/core/shangshu.js';
@@ -154,13 +154,37 @@ function handleRulesCommand() {
 }
 
 function generateMap() {
-  console.log(`🔍 正在扫描代码库并提取 AST 符号骨架 (C# / Vue 3)...`);
-  const mapContent = extractCodebaseMap(process.cwd());
-  const sanshengDir = path.join(process.cwd(), '.sansheng');
+  const cwd = process.cwd();
+  const clearCacheIdx = args.indexOf('--clear-cache');
+  if (clearCacheIdx > -1) {
+    clearMapCache(cwd);
+    console.log(`🧹 已成功清理代码拓扑增量缓存 (.sansheng/cache/map_cache.json)。`);
+  }
+
+  const focusIdx = args.indexOf('--focus');
+  if (focusIdx > -1 && args[focusIdx + 1]) {
+    const focusTarget = args[focusIdx + 1];
+    console.log(`🎯 正在提取针对 \`${focusTarget}\` 的聚焦拓扑切片 (JIT Slice)...`);
+    const slice = queryFocusedMap(cwd, focusTarget, { budget: 2000 });
+    console.log(`\n` + slice);
+    return;
+  }
+
+  const isFull = args.includes('--full');
+  console.log(`🔍 正在扫描代码库并提取 AST 符号与依赖拓扑 (模式: ${isFull ? '全量平铺' : 'Top-K 枢纽收敛'})...`);
+  const startTime = Date.now();
+  const mapContent = extractCodebaseMap(cwd, 4, { full: isFull });
+  const duration = Date.now() - startTime;
+
+  const sanshengDir = path.join(cwd, '.sansheng');
   if (!fs.existsSync(sanshengDir)) fs.mkdirSync(sanshengDir, { recursive: true });
   const outputPath = path.join(sanshengDir, 'codebase_map.md');
   fs.writeFileSync(outputPath, mapContent, 'utf-8');
-  console.log(`✅ AST 代码骨架已生成: .sansheng/codebase_map.md (Token 压缩率 > 95%)`);
+
+  console.log(`✅ 代码拓扑地图已就绪 (${duration}ms):`);
+  console.log(`   ➔ 📄 人类与模型可读骨架: .sansheng/codebase_map.md (Token 压缩率 > 95%)`);
+  console.log(`   ➔ 📊 机器结构化图谱索引: .sansheng/codebase_index.json`);
+  console.log(`   ➔ ⚡ 增量指纹缓存已激活: .sansheng/cache/map_cache.json`);
 }
 
 function showStatus() {
@@ -199,7 +223,8 @@ function showHelp() {
   sansheng sync-rules --export  反向导出集中规则至指定 IDE (如 --export trae,catpaw,qoder)
   sansheng update               从 NPM 检查并原地升级至最新版本，无损增量同步工作区配置与 IDE 规则
                                 (参数: --check 仅检查版本, --skip-npm 仅同步工作区, --force 强制重装)
-  sansheng map                  提取当前项目 AST 符号骨架 (.sansheng/codebase_map.md)
+  sansheng map                  生成双层拓扑地图与索引 (.sansheng/codebase_map.md & codebase_index.json)
+                                (参数: --focus <path> 提取局部邻居切片, --clear-cache 清理增量指纹)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
   sansheng html [path]          0 Token 将已有项目的 task.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
                                 (可选指定路径，如: sansheng html ./task.md 或全向自动探测)
