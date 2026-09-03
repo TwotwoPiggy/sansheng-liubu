@@ -1,20 +1,30 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * 自动为工作区注入 VS Code 与 GitHub Copilot 专属增强套件
  */
 export function injectVSCodeEnhancements(cwd = process.cwd()) {
-  const templateDir = path.resolve(new URL('../templates', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+  const templateDir = fileURLToPath(new URL('../templates', import.meta.url));
 
-  // 1. 注入 .github/copilot-instructions.md
+  // 1. 注入 .github/copilot-instructions.md (增量安全合并，严禁暴力覆写用户原有指令)
   const githubDir = path.join(cwd, '.github');
   if (!fs.existsSync(githubDir)) fs.mkdirSync(githubDir, { recursive: true });
 
   const copilotInstructionsPath = path.join(githubDir, 'copilot-instructions.md');
   const srcInstructions = path.join(templateDir, 'copilot-instructions.md');
   if (fs.existsSync(srcInstructions)) {
-    fs.copyFileSync(srcInstructions, copilotInstructionsPath);
+    const templateContent = fs.readFileSync(srcInstructions, 'utf-8');
+    if (fs.existsSync(copilotInstructionsPath)) {
+      const existingContent = fs.readFileSync(copilotInstructionsPath, 'utf-8');
+      if (!existingContent.includes('sansheng-liubu') && !existingContent.includes('三省六部')) {
+        const separator = existingContent.endsWith('\n') ? '\n' : '\n\n';
+        fs.appendFileSync(copilotInstructionsPath, `${separator}<!-- sansheng-liubu:start -->\n${templateContent}\n<!-- sansheng-liubu:end -->\n`, 'utf-8');
+      }
+    } else {
+      fs.writeFileSync(copilotInstructionsPath, templateContent, 'utf-8');
+    }
   }
 
   // 2. 注入 .github/prompts/ 与 .vscode/prompts/ (支持 /sansheng 与 /sansheng-liubu 双别名)

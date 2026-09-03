@@ -57,17 +57,26 @@ export function createUatGateTool(config) {
       const lines = content.split('\n');
 
       if (args.action === 'list') {
-        const uatLines = lines.filter(l => l.includes('[UAT-'));
-        const pending = uatLines.filter(l => l.trim().startsWith('- [ ]'));
+        const { parseUATBlocks } = await import('../../core/uat-runner.js');
+        const allItems = parseUATBlocks(content);
+        const pending = allItems.filter(item => !item.passed);
+        const detailList = pending.map(p => {
+          let str = `  - [ ] [${p.id}] ${p.title}`;
+          if (p.trace) str += ` (溯源: ${p.trace})`;
+          if (p.expected) str += `\n      🎯 PRD预期: ${p.expected}`;
+          return str;
+        }).join('\n');
+
         return {
           success: true,
-          message: `共 ${uatLines.length} 个 UAT 验收项，剩余待验收: ${pending.length} 项。\n${pending.map(p => '  ' + p.trim()).join('\n')}`,
+          message: `共 ${allItems.length} 个 UAT 验收项，剩余待验收: ${pending.length} 项。\n${detailList}`,
           remainingUatCount: pending.length,
           allPassed: pending.length === 0,
         };
       }
 
       if (args.action === 'pass' && args.uatId) {
+        const { parseUATBlocks } = await import('../../core/uat-runner.js');
         const idRegex = new RegExp(`-\\s*\\[\\s*\\]\\s*.*?\\[?${args.uatId}\\]?`, 'i');
         let matched = false;
         const newLines = lines.map(line => {
@@ -79,8 +88,9 @@ export function createUatGateTool(config) {
         });
 
         if (matched) {
-          fs.writeFileSync(taskPath, newLines.join('\n'), 'utf-8');
-          const remaining = newLines.filter(l => l.includes('[UAT-') && l.trim().startsWith('- [ ]')).length;
+          const newContent = newLines.join('\n');
+          fs.writeFileSync(taskPath, newContent, 'utf-8');
+          const remaining = parseUATBlocks(newContent).filter(item => !item.passed).length;
 
           // 若配置了自动复盘且该项有修复反馈
           if (config?.yongleDadian?.autoPostmortemOnFix && args.feedback) {
@@ -98,7 +108,7 @@ export function createUatGateTool(config) {
           return {
             success: false,
             message: `未在 TASK.md 中找到未完成的 [${args.uatId}] 验收项`,
-            remainingUatCount: lines.filter(l => l.includes('[UAT-') && l.trim().startsWith('- [ ]')).length,
+            remainingUatCount: parseUATBlocks(content).filter(item => !item.passed).length,
             allPassed: false,
           };
         }

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 /**
  * 永乐大典双向连接器 (Yongle Dadian Bridge)
@@ -46,21 +46,22 @@ export class YongleBridge {
    * 优先调用 yongle-hybrid-search.js 混合检索核心
    */
   async preRecall(techStack = ['dotnet', 'vue3']) {
-    console.log(`🏛️ [永乐大典] 正在前置检索相关技术规范与历史踩坑经验 (${techStack.join(', ')})...`);
+    const safeStack = Array.isArray(techStack) ? techStack : [String(techStack)];
+    console.log(`🏛️ [永乐大典] 正在前置检索相关技术规范与历史踩坑经验 (${safeStack.join(', ')})...`);
 
     const scriptsDir = this.resolveScriptsDir();
     if (scriptsDir) {
       try {
         const searchScript = path.join(scriptsDir, 'yongle-hybrid-search.js');
-        const query = techStack.join(' ');
-        const output = execSync(`node "${searchScript}" auto "${query}" --limit 3`, {
-          stdio: 'pipe',
+        const query = safeStack.join(' ');
+        const output = execFileSync(process.execPath, [searchScript, 'auto', query, '--limit', '3'], {
+          stdio: ['pipe', 'pipe', 'ignore'],
           encoding: 'utf-8',
           timeout: 15000
         });
         
         console.log(`   ➔ 已完成永乐大典混合检索 (auto)。`);
-        return [{ raw: output, tags: techStack }];
+        return [{ raw: output, tags: safeStack }];
       } catch (_) {}
     }
 
@@ -72,11 +73,16 @@ export class YongleBridge {
    * 后置自动复盘提炼新踩坑经验 (SPEC §7)
    * 注: 完整的 Postmortem 归档由 IDE Agent 从对话上下文提炼，此处提供状态追踪
    */
-  async postmortem(bugContext) {
+  async postmortem(bugContext = {}) {
     console.log(`💡 [永乐大典] 正在记录缺陷修复事件...`);
-    const title = bugContext.title || '开发避坑经验';
+    const title = bugContext?.title || '开发避坑经验';
     console.log(`   ➔ 建议在 IDE 对话框中输入 "yongle postmortem" 或由 Agent 触发 yongle-postmortem 归档: "${title}"`);
-    return { archived: true, title, syncStatus: 'ready_for_agent_postmortem' };
+    return {
+      archived: true,
+      title,
+      syncStatus: 'ready_for_agent_postmortem',
+      timestamp: new Date().toISOString()
+    };
   }
 
   /**
@@ -88,7 +94,7 @@ export class YongleBridge {
       const syncScript = path.join(scriptsDir, 'yongle-sync-knowledge.js');
       if (fs.existsSync(syncScript)) {
         try {
-          execSync(`node "${syncScript}"`, { stdio: 'inherit', timeout: 30000 });
+          execFileSync(process.execPath, [syncScript], { stdio: 'inherit', timeout: 30000 });
           console.log(`✅ [永乐大典] 知识库同步已完成。`);
           return true;
         } catch (e) {

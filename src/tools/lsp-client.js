@@ -1,5 +1,6 @@
 import { spawn, execSync } from 'child_process';
 import path from 'path';
+import { pathToFileURL, fileURLToPath } from 'url';
 
 /**
  * 通用 LSP 语言服务器客户端 (深度适配 C# csharp-ls 与 Vue 3 Volar)
@@ -12,6 +13,29 @@ export class LSPClient {
     this.msgId = 0;
     this.pendingRequests = new Map();
     this.diagnostics = new Map(); // 存储实时红波浪线报错
+    this.initialized = false;
+  }
+
+  /**
+   * 将本地文件路径规范化转换为符合 RFC 8089 的标准 file:// URI
+   */
+  static toURI(filePath) {
+    if (!filePath) return '';
+    if (filePath.startsWith('file://')) return filePath;
+    return pathToFileURL(path.resolve(filePath)).href;
+  }
+
+  /**
+   * 将 file:// URI 解析回本地文件系统绝对路径
+   */
+  static fromURI(uri) {
+    if (!uri) return '';
+    if (!uri.startsWith('file://')) return uri;
+    try {
+      return fileURLToPath(uri);
+    } catch (_) {
+      return uri.replace(/^file:\/\//, '');
+    }
   }
 
   /**
@@ -68,10 +92,62 @@ export class LSPClient {
       this.pendingRequests.set(id, { resolve, reject });
       const json = JSON.stringify({ jsonrpc: '2.0', id, method, params });
       const message = `Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`;
-      if (this.process && this.process.stdin.writable) {
+      if (this.process && this.process.stdin && this.process.stdin.writable) {
         this.process.stdin.write(message);
       } else {
         reject(new Error('LSP 进程未连接'));
+      }
+    });
+  }
+
+  sendNotification(method, params) {
+    const json = JSON.stringify({ jsonrpc: '2.0', method, params });
+    const message = `Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`;
+    if (this.process && this.process.stdin && this.process.stdin.writable) {
+      this.process.stdin.write(message);
+    }
+  }
+
+  /**
+   * 发送 LSP 标准 initialize 请求并发送 initialized 通知
+   */
+  async initialize(projectRoot = process.cwd()) {
+    const rootUri = LSPClient.toURI(projectRoot);
+    const result = await this.sendRequest('initialize', {
+      processId: process.pid,
+      rootUri,
+      capabilities: {
+        workspace: {
+          applyEdit: true,
+          workspaceEdit: { documentChanges: true }
+        },
+        textDocument: {
+          synchronization: { dynamicRegistration: false, willSave: false, willSaveWaitUntil: false, didSave: true },
+          completion: { dynamicRegistration: false, completionItem: { snippetSupport: true } },
+          hover: { dynamicRegistration: false, contentFormat: ['markdown', 'plaintext'] },
+          definition: { dynamicRegistration: false },
+          references: { dynamicRegistration: false },
+          documentSymbol: { dynamicRegistration: false },
+          rename: { dynamicRegistration: false, prepareSupport: true }
+        }
+      }
+    });
+    this.sendNotification('initialized', {});
+    this.initialized = true;
+    return result;
+  }
+
+  /**
+   * 发送 textDocument/didOpen 打开文档通知
+   */
+  openDocument(filePath, content = '', languageId = 'csharp') {
+    const uri = LSPClient.toURI(filePath);
+    this.sendNotification('textDocument/didOpen', {
+      textDocument: {
+        uri,
+        languageId,
+        version: 1,
+        text: content
       }
     });
   }
@@ -94,7 +170,7 @@ export class LSPClient {
    */
   async renameSymbol(filePath, line, character, newName) {
     return this.sendRequest('textDocument/rename', {
-      textDocument: { uri: `file://${filePath}` },
+      textDocument: { uri: LSPClient.toURI(filePath) },
       position: { line, character },
       newName
     });
@@ -105,7 +181,7 @@ export class LSPClient {
    */
   async findReferences(filePath, line, character) {
     return this.sendRequest('textDocument/references', {
-      textDocument: { uri: `file://${filePath}` },
+      textDocument: { uri: LSPClient.toURI(filePath) },
       position: { line, character },
       context: { includeDeclaration: true }
     });
@@ -116,7 +192,7 @@ export class LSPClient {
    */
   async getDefinition(filePath, line, character) {
     return this.sendRequest('textDocument/definition', {
-      textDocument: { uri: `file://${filePath}` },
+      textDocument: { uri: LSPClient.toURI(filePath) },
       position: { line, character }
     });
   }
@@ -126,7 +202,7 @@ export class LSPClient {
    */
   async getDocumentSymbols(filePath) {
     return this.sendRequest('textDocument/documentSymbol', {
-      textDocument: { uri: `file://${filePath}` }
+      textDocument: { uri: LSPClient.toURI(filePath) }
     });
   }
 
@@ -134,13 +210,18 @@ export class LSPClient {
    * 5. 获取当前文件实时语法诊断报错 (秒级捕获类型错误)
    */
   getFileDiagnostics(filePath) {
-    const uri = `file://${filePath}`;
+    const uri = LSPClient.toURI(filePath);
     return this.diagnostics.get(uri) || [];
   }
 
   stop() {
     if (this.process) {
-      this.process.kill();
+      try {
+        this.sendNotification('exit', {});
+        this.process.kill();
+      } catch (_) {
+        this.process.kill();
+      }
     }
   }
 }

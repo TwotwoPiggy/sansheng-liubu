@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📋 任务状态板: 全系统列表页异步导出引擎重构 (.NET 8 + Vue 3) [已全部交付 ✅]</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --tag-bg: #334155;
+      --code-bg: #0f172a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --card-border: #e2e8f0;
+        --text-main: #0f172a;
+        --text-sub: #64748b;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --success: #059669;
+        --success-bg: #ecfdf5;
+        --warning: #d97706;
+        --warning-bg: #fffbeb;
+        --danger: #dc2626;
+        --tag-bg: #f1f5f9;
+        --code-bg: #f1f5f9;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); line-height: 1.6; padding: 24px 16px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    /* Header */
+    header { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--card-border); }
+    .header-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge-0token { font-size: 0.75rem; background: var(--success-bg); color: var(--success); padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--success); font-weight: normal; }
+    
+    /* Progress Dashboard */
+    .progress-box { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin: 16px 0; }
+    .progress-stats { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 8px; }
+    .progress-bar-bg { background: var(--tag-bg); border-radius: 9999px; height: 10px; overflow: hidden; }
+    .progress-bar-fill { background: linear-gradient(90deg, var(--primary), var(--success)); height: 100%; transition: width 0.3s ease; }
+    
+    /* Action Bar */
+    .action-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--card-border); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.btn-primary { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+    button.btn-primary:hover { background: var(--primary-hover); }
+    button.btn-active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+    
+    /* Tabs */
+    .filter-tabs { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 2px; }
+    .filter-btn { border: none; background: transparent; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; }
+    .filter-btn.active { background: var(--primary); color: #fff; }
+    
+    /* UAT Card */
+    .uat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px; margin-bottom: 14px; transition: all 0.2s; position: relative; }
+    .uat-card.passed { border-color: var(--success); }
+    .uat-card-header { display: flex; align-items: flex-start; gap: 14px; }
+    
+    /* Custom Checkbox */
+    .checkbox-wrapper { position: relative; display: flex; align-items: center; margin-top: 2px; }
+    .uat-checkbox { appearance: none; width: 22px; height: 22px; border: 2px solid var(--card-border); border-radius: 6px; cursor: pointer; background: var(--card-bg); display: grid; place-content: center; transition: all 0.2s; }
+    .uat-checkbox:checked { background: var(--success); border-color: var(--success); }
+    .uat-checkbox:checked::after { content: "✔"; color: #fff; font-size: 13px; font-weight: bold; }
+    .uat-checkbox:hover { border-color: var(--primary); }
+    
+    .uat-title-area { flex: 1; }
+    .uat-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .tag-id { font-weight: 700; color: var(--primary); font-size: 0.85rem; font-family: monospace; background: var(--tag-bg); padding: 1px 6px; border-radius: 4px; }
+    .tag-trace { font-size: 0.75rem; color: var(--text-sub); background: var(--tag-bg); padding: 1px 6px; border-radius: 4px; }
+    .status-badge { font-size: 0.75rem; padding: 1px 8px; border-radius: 9999px; font-weight: 600; margin-left: auto; }
+    .status-badge.pending { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
+    .status-badge.done { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+    .uat-title { font-size: 1rem; font-weight: 600; }
+    
+    /* Details */
+    .uat-details { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--card-border); font-size: 0.88rem; display: flex; flex-direction: column; gap: 8px; }
+    .detail-row { display: flex; gap: 8px; }
+    .detail-label { font-weight: 600; color: var(--text-sub); min-width: 80px; flex-shrink: 0; }
+    .detail-content { color: var(--text-main); flex: 1; }
+    .prd-expected-box { background: var(--success-bg); border-left: 3px solid var(--success); padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 4px; }
+    .prd-expected-box .detail-label { color: var(--success); }
+    
+    /* Defect Box */
+    .defect-section { margin-top: 10px; }
+    .defect-toggle { font-size: 0.75rem; color: var(--text-sub); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
+    .defect-panel { display: none; margin-top: 8px; background: var(--tag-bg); padding: 10px; border-radius: 8px; }
+    .defect-input { width: 100%; padding: 8px; border: 1px solid var(--card-border); background: var(--bg); color: var(--text-main); border-radius: 6px; font-size: 0.85rem; margin-bottom: 6px; }
+    
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-radius: 8px; padding: 12px 18px; font-size: 0.85rem; display: none; z-index: 1000; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title-row">
+        <h1>🏛️ 📋 任务状态板: 全系统列表页异步导出引擎重构 (.NET 8 + Vue 3) [已全部交付 ✅] <span class="badge-0token">0 Token 本地编译</span></h1>
+      </div>
+      <div class="progress-box">
+        <div class="progress-stats">
+          <span>验收通过进度: <strong id="progress-text">1 / 3 (33%)</strong></span>
+          <span id="sync-status">💾 本地离线就绪</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progress-fill" class="progress-bar-fill" style="width: 33%;"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="action-bar">
+      <div class="btn-group">
+        <button id="btn-link-file" class="btn-primary" onclick="linkLocalFile()">📁 关联本地 TASK.md (自动静默保存)</button>
+        <button onclick="copyLatestMarkdown()">📋 复制已更新 Markdown</button>
+        <button onclick="downloadMarkdown()">💾 下载更新文件</button>
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-btn active" onclick="filterItems('all', this)">全部 (<span id="count-all">3</span>)</button>
+        <button class="filter-btn" onclick="filterItems('pending', this)">待验收 (<span id="count-pending">2</span>)</button>
+        <button class="filter-btn" onclick="filterItems('passed', this)">已通过 (<span id="count-passed">1</span>)</button>
+      </div>
+    </div>
+
+    <main id="uat-list"></main>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    let items = [{"id":"UAT-01","passed":true,"title":"订单列表异步导出正常流","trace":"REQ-01 / AC-1","preconditions":"登录 `operator_test` 运营账号，系统存在待发货状态订单","steps":"进入【订单管理 ➔ 列表】➔ 勾选前 2 条 ➔ 点击右上角【批量导出】","expected":"1秒内弹出 `\u003cel-message>` 成功提示：“导出任务已提交”；进入【下载中心】状态为“已完成”，下载 Excel 打开无乱码，客户手机号显示为 138****0000 脱敏格式。","rawHeaderLine":"- [x] `[UAT-01]` (溯源: REQ-01 / AC-1) 【订单列表异步导出正常流】","rawText":"订单列表异步导出正常流"},{"id":"UAT-02","passed":false,"title":"超过阈值熔断拦截","trace":"REQ-01 / AC-2","preconditions":"筛选全量订单（勾选或总数 > 10,000 条）","steps":"点击【批量导出】按钮","expected":"前端直接弹出 Warning 提示：“单次导出不得超过 10,000 条”，不触发后端接口，导出按钮不锁定。","rawHeaderLine":"- [ ] `[UAT-02]` (溯源: REQ-01 / AC-2) 【超过阈值熔断拦截】","rawText":"超过阈值熔断拦截"},{"id":"UAT-03","passed":false,"title":"无导出权限租户越权拦截","trace":"REQ-02 / AC-1","preconditions":"登录普通访客账号 `guest_user`","steps":"直接通过 URL 访问 `/orders/export` 或伪造请求","expected":"系统正确拦截并返回 4003 无权访问，前端重定向至 403 页面并提示“请联系管理员申请导出权限”。","rawHeaderLine":"- [ ] `[UAT-03]` (溯源: REQ-02 / AC-1) 【无导出权限租户越权拦截】","rawText":"无导出权限租户越权拦截"}];
+    let rawMarkdown = "# 📋 任务状态板: 全系统列表页异步导出引擎重构 (.NET 8 + Vue 3) [已全部交付 ✅]\r\n\r\n## 1. 需求溯源清单 (REQ Inventory)\r\n- [x] [REQ-01] MediatR 通用 ExportCommand 管道分发与查询拦截\r\n- [x] [REQ-02] Hangfire 异步后台作业调度与任务生命周期管理 (WebAPI)\r\n- [x] [REQ-03] Redis Pub/Sub 广播中枢与 .NET 8 SSE 流式通知端点\r\n- [x] [REQ-04] C# Stream 分片流式写 Excel 与防 OOM 控制\r\n- [x] [REQ-05] Vue 3 useEventSource 实时监听与 Element-Plus 下载中心抽屉\r\n\r\n## 2. 决策看板 (Living Decisions Board)\r\n- [x] **[DEC-01] 接入架构**: MediatR 管道模式 (ExportCommand 解耦)\r\n- [x] **[DEC-02] 调度引擎**: Hangfire 后台作业 + 纯 WebAPI 暴露\r\n- [x] **[DEC-03] 实时推送**: 分布式 Redis Pub/Sub + .NET 8 原生 SSE 流式端点\r\n\r\n## 3. 核心业务边界铁律 (Invariants & Rules)\r\n- [x] **[RULE-01 权限隔离]**：已通过租户隔离测试\r\n- [x] **[RULE-02 阈值熔断]**：已通过 100 万行熔断测试\r\n- [x] **[RULE-03 失败补偿]**：已通过异常补偿与 SSE 广播测试\r\n- [x] **[RULE-04 敏感脱敏]**：已通过字段脱敏规则测试\r\n\r\n## 4. 🎯 验收标准与质量门禁 (Quality Gates - 全部通过 ✅)\r\n### 1. 自动化单元测试门禁 (.NET 8 & Vue 3)\r\n- [x] 运行 `dotnet test --verbosity quiet`，所有 xUnit/NUnit 测试 100% 绿灯 (15 Passed, 0 Failed, 0 Error)。\r\n- [x] 核心导出管道与 Job 覆盖率 89.2% (>= 80% 达标)。\r\n### 2. 边界反例用例清单 (Boundary Tests)\r\n- [x] `[RULE-01]` 租户数据隔离测试用例通过\r\n- [x] `[RULE-02]` 100万行熔断拦截测试用例通过\r\n- [x] `[RULE-03]` 异常补偿与失败事件推送测试用例通过\r\n### 3. 一键端到端冒烟命令\r\n```bash\r\ndotnet test --filter \"Category=ExportIntegration\"\r\n```\r\n### 4. 人工 UAT 交付验收准则清单 (Human Sign-off Checklist)\r\n- [x] `[UAT-01]` (溯源: REQ-01 / AC-1) 【订单列表异步导出正常流】\r\n  - **前置与数据**：登录 `operator_test` 运营账号，系统存在待发货状态订单\r\n  - **操作步骤**：进入【订单管理 ➔ 列表】➔ 勾选前 2 条 ➔ 点击右上角【批量导出】\r\n  - **PRD预期对照**：1秒内弹出 `\u003cel-message>` 成功提示：“导出任务已提交”；进入【下载中心】状态为“已完成”，下载 Excel 打开无乱码，客户手机号显示为 138****0000 脱敏格式。\r\n- [ ] `[UAT-02]` (溯源: REQ-01 / AC-2) 【超过阈值熔断拦截】\r\n  - **前置与数据**：筛选全量订单（勾选或总数 > 10,000 条）\r\n  - **操作步骤**：点击【批量导出】按钮\r\n  - **PRD预期对照**：前端直接弹出 Warning 提示：“单次导出不得超过 10,000 条”，不触发后端接口，导出按钮不锁定。\r\n- [ ] `[UAT-03]` (溯源: REQ-02 / AC-1) 【无导出权限租户越权拦截】\r\n  - **前置与数据**：登录普通访客账号 `guest_user`\r\n  - **操作步骤**：直接通过 URL 访问 `/orders/export` 或伪造请求\r\n  - **PRD预期对照**：系统正确拦截并返回 4003 无权访问，前端重定向至 403 页面并提示“请联系管理员申请导出权限”。\r\n\r\n## 5. 波次执行计划 (Wave-based Tasks)\r\n### 🌊 Wave 1: 核心后端管道与作业引擎 (.NET 8)\r\n- [x] **Task 1: 实现 MediatR ExportCommand 管道与 Hangfire 作业调度器** `[REQ-01]` `[REQ-02]` `[RULE-01]`\r\n- [x] **Task 2: 实现 Redis Pub/Sub 广播服务与 .NET 8 SSE 流式端点** `[REQ-03]` `[RULE-03]`\r\n\r\n### 🌊 Wave 2: 前端 SSE 监听与下载中心 (Vue 3 + Element Plus)\r\n- [x] **Task 3: 封装 Vue 3 useExportSSE Hook 与 Pinia 全局通知状态** `[REQ-05]`\r\n- [x] **Task 4: 构建 Element Plus 下载中心 Drawer 组件与通用列表导出按钮** `[REQ-05]`\r\n\r\n## 6. 覆盖率自检对账 (Coverage Audit)\r\n- 📊 REQ 提取: 5 项 | Plan 覆盖: 5 项 (100% 0 遗漏，全部通过)\r\n";
+    let fileHandle = null;
+    let activeFilter = 'all';
+
+    function init() {
+      // 尝试从 localStorage 恢复用户最近修改
+      const cached = localStorage.getItem('sansheng_uat_states');
+      if (cached) {
+        try {
+          const stateMap = JSON.parse(cached);
+          items.forEach(it => {
+            if (stateMap[it.id] !== undefined) {
+              it.passed = stateMap[it.id];
+            }
+          });
+        } catch (e) {}
+      }
+      render();
+    }
+
+    function render() {
+      const listEl = document.getElementById('uat-list');
+      listEl.innerHTML = '';
+
+      let passedCount = 0;
+      items.forEach((item, index) => {
+        if (item.passed) passedCount++;
+
+        const isVisible = activeFilter === 'all' || (activeFilter === 'passed' && item.passed) || (activeFilter === 'pending' && !item.passed);
+        if (!isVisible) return;
+
+        const card = document.createElement('div');
+        card.className = 'uat-card' + (item.passed ? ' passed' : '');
+        card.innerHTML = `
+          <div class="uat-card-header">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" class="uat-checkbox" ${item.passed ? 'checked' : ''} onchange="toggleUAT('${item.id}', this.checked)">
+            </div>
+            <div class="uat-title-area">
+              <div class="uat-meta-row">
+                <span class="tag-id">[${escapeHtml(item.id)}]</span>
+                ${item.trace ? `<span class="tag-trace">📌 溯源: ${escapeHtml(item.trace)}</span>` : ''}
+                <span class="status-badge ${item.passed ? 'done' : 'pending'}">${item.passed ? '已通过 ✅' : '待验收 ⏳'}</span>
+              </div>
+              <div class="uat-title">${escapeHtml(item.title)}</div>
+            </div>
+          </div>
+
+          <div class="uat-details">
+            ${item.preconditions ? `
+              <div class="detail-row">
+                <div class="detail-label">🛠️ 前置数据</div>
+                <div class="detail-content">${escapeHtml(item.preconditions)}</div>
+              </div>` : ''}
+            ${item.steps ? `
+              <div class="detail-row">
+                <div class="detail-label">🪜 操作步骤</div>
+                <div class="detail-content">${escapeHtml(item.steps)}</div>
+              </div>` : ''}
+            ${item.expected ? `
+              <div class="prd-expected-box">
+                <div class="detail-row">
+                  <div class="detail-label">🎯 PRD预期</div>
+                  <div class="detail-content"><strong>${escapeHtml(item.expected)}</strong></div>
+                </div>
+              </div>` : ''}
+          </div>
+
+          <div class="defect-section">
+            <button class="defect-toggle" onclick="toggleDefectBox('defect-${item.id}')">⚠️ 发现缺陷？点击记录反馈</button>
+            <div id="defect-${item.id}" class="defect-panel">
+              <input type="text" class="defect-input" placeholder="输入与 PRD 预期的实际偏差描述..." id="input-${item.id}">
+              <button onclick="copyDefectPrompt('${item.id}')">📋 复制自愈指令发给 AI</button>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      // 更新进度条与计数
+      const total = items.length;
+      const percent = total > 0 ? Math.round((passedCount / total) * 100) : 100;
+      document.getElementById('progress-text').innerText = `${passedCount} / ${total} (${percent}%)`;
+      document.getElementById('progress-fill').style.width = percent + '%';
+      document.getElementById('count-all').innerText = total;
+      document.getElementById('count-pending').innerText = total - passedCount;
+      document.getElementById('count-passed').innerText = passedCount;
+
+      // 持久化到 localStorage
+      const stateMap = {};
+      items.forEach(i => stateMap[i.id] = i.passed);
+      localStorage.setItem('sansheng_uat_states', JSON.stringify(stateMap));
+    }
+
+    async function toggleUAT(id, isChecked) {
+      const target = items.find(i => i.id === id);
+      if (!target) return;
+      target.passed = isChecked;
+
+      // 实时更新当前内存中的 Markdown
+      if (target.rawHeaderLine) {
+        const replacement = isChecked
+          ? target.rawHeaderLine.replace(/-\s*\[\s*\]/, '- [x]')
+          : target.rawHeaderLine.replace(/-\s*\[[xX]\]/, '- [ ]');
+        rawMarkdown = rawMarkdown.replace(target.rawHeaderLine, replacement);
+        target.rawHeaderLine = replacement;
+      }
+
+      // 若关联了本地文件，自动静默写回磁盘
+      if (fileHandle) {
+        try {
+          const writable = await fileHandle.createWritable();
+          await writable.write(rawMarkdown);
+          await writable.close();
+          showToast(`✅ 已更新 [${id}] 并已自动保存至本地 TASK.md！`);
+        } catch (err) {
+          showToast(`⚠️ 保存至本地文件失败: ${err.message}`);
+        }
+      } else {
+        showToast(`✅ 已记录 [${id}] 状态 (点击上方关联本地文件可自动同步)`);
+      }
+
+      render();
+    }
+
+    async function linkLocalFile() {
+      if (!window.showOpenFilePicker) {
+        alert('当前浏览器环境不支持 File System Access API，请使用 Chrome 或 Edge 浏览器体验自动静默保存。');
+        return;
+      }
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Markdown Task File', accept: { 'text/markdown': ['.md'] } }]
+        });
+        fileHandle = handle;
+        document.getElementById('btn-link-file').innerHTML = '🟢 已关联: ' + escapeHtml(handle.name) + ' (自动静默保存)';
+        document.getElementById('btn-link-file').classList.remove('btn-primary');
+        document.getElementById('sync-status').innerText = '🟢 已连接本地磁盘自动保存';
+        showToast('🎉 成功关联本地文件！现在在网页勾选将自动实时同步写入。');
+      } catch (e) {
+        // 用户取消选择
+      }
+    }
+
+    function copyLatestMarkdown() {
+      navigator.clipboard.writeText(rawMarkdown).then(() => {
+        showToast('📋 已将最新包含勾选状态的 Markdown 复制到剪贴板！');
+      }).catch(() => {
+        alert('复制失败，请手动下载文件。');
+      });
+    }
+
+    function downloadMarkdown() {
+      const blob = new Blob([rawMarkdown], { type: 'text/markdown;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'TASK.md';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('💾 已下载最新 TASK.md');
+    }
+
+    function filterItems(type, btnEl) {
+      activeFilter = type;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btnEl.classList.add('active');
+      render();
+    }
+
+    function toggleDefectBox(id) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function copyDefectPrompt(id) {
+      const input = document.getElementById('input-' + id);
+      const desc = (input && input.value.trim()) || '未提供具体缺陷现象';
+      const prompt = `2 [${id}] 缺陷反馈: ${desc}`;
+      navigator.clipboard.writeText(prompt).then(() => {
+        showToast('📋 已复制自愈指令: "' + prompt + '"，直接发给 AI 即可触发自愈修复！');
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -4,8 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { extractCodebaseMap } from '../src/tools/codebase-map.js';
 import { runInteractiveUAT } from '../src/core/uat-runner.js';
+import { exportUATHtml } from '../src/core/uat-html-compiler.js';
 import { executeArchive } from '../src/core/shangshu.js';
-import { runUpdate } from '../src/core/updater.js';
+import { runUpdate, getLocalVersion } from '../src/core/updater.js';
 import { promptAndInstallYongle } from '../src/tools/yongle-installer.js';
 import { LSPClient } from '../src/tools/lsp-client.js';
 import { CBMBridge } from '../src/tools/cbm-bridge.js';
@@ -15,7 +16,7 @@ import { RuleSync } from '../src/tools/rule-sync.js';
 const args = process.argv.slice(2);
 const command = args[0] || 'help';
 
-console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v1.2.1`);
+console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v${getLocalVersion()}`);
 
 async function main() {
   switch (command) {
@@ -36,8 +37,14 @@ async function main() {
     case 'status':
       showStatus();
       break;
+    case 'html':
+    case 'uat-html':
+      handleExportHtml();
+      break;
     case 'uat':
+      try { exportUATHtml(); } catch (e) {}
       await runInteractiveUAT();
+      try { exportUATHtml(); } catch (e) {}
       break;
     case 'archive':
       executeArchive();
@@ -174,6 +181,16 @@ function showStatus() {
   console.log(`\n👉 回复 c (全自动推进) 或 s (单步推进)`);
 }
 
+function handleExportHtml() {
+  const res = exportUATHtml();
+  if (res.success) {
+    console.log(`\n🎉 ${res.message}`);
+    console.log(`💡 提示: 您可以直接用默认浏览器双击打开此 HTML 文件，体验鼠标勾选与自动静默保存！\n`);
+  } else {
+    console.log(`\n⚠️ ${res.message}\n`);
+  }
+}
+
 function showHelp() {
   console.log(`
 用法:
@@ -184,6 +201,7 @@ function showHelp() {
                                 (参数: --check 仅检查版本, --skip-npm 仅同步工作区, --force 强制重装)
   sansheng map                  提取当前项目 AST 符号骨架 (.sansheng/codebase_map.md)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
+  sansheng html                 0 Token 将 TASK.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环
   sansheng archive              执行项目两级归档并同步至《永乐大典》
   `);

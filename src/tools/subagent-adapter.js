@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * 统一 Subagent 调度门面 (三省统领六部工兵)
@@ -50,8 +51,8 @@ export class SubagentAdapter {
    */
   runHeadlessWorker(task, model) {
     return new Promise((resolve) => {
-      const workerScript = path.resolve('./bin/worker.js');
-      const child = spawn('node', [workerScript, '--task', JSON.stringify(task), '--model', model], {
+      const workerScript = fileURLToPath(new URL('../../bin/worker.js', import.meta.url));
+      const child = spawn(process.execPath, [workerScript, '--task', JSON.stringify(task), '--model', model], {
         stdio: 'inherit'
       });
 

@@ -213,6 +213,25 @@ export async function runUpdate(rawOptions = {}) {
     } catch (e) {
       console.warn(`   ➔ ⚠️ 合并配置失败:`, e.message);
     }
+  } else {
+    // 工作区未找到配置，主动生成默认标准配置
+    const defaultConfig = {
+      models: {
+        architect_tier: "gemini-3.7-flash",
+        worker_tier: "deepseek-v3",
+        fallback_tier: "gemini-3.7-flash"
+      },
+      escalation: { enabled: true, max_retries: 2 },
+      stack: { backend: "dotnet8", frontend: "vue3-element" },
+      code_intelligence: { cbm_enabled: true, lsp_enabled: true },
+      yongle_dadian: {
+        enabled: checkYongleInstalled(),
+        auto_recall_on_align: true,
+        auto_postmortem_on_fix: true
+      }
+    };
+    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
+    console.log(`   ➔ ✅ 工作区未检测到旧配置，已主动创建标准配置: .sansheng/config.json`);
   }
 
   // 3. 刷新 VS Code 与 Copilot 规则

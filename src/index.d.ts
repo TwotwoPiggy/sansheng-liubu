@@ -34,7 +34,8 @@ export declare function apply(ctx: Context, config?: SanshengConfig): void;
 export { Zhongshu } from './core/zhongshu.js';
 export { Menxia } from './core/menxia.js';
 export { Shangshu, executeArchive } from './core/shangshu.js';
-export { runInteractiveUAT } from './core/uat-runner.js';
+export { runInteractiveUAT, parseUATBlocks, markUATItemPassed } from './core/uat-runner.js';
+export { compileUATToHtml, exportUATHtml } from './core/uat-html-compiler.js';
 export { extractCodebaseMap } from './tools/codebase-map.js';
 export { LSPClient } from './tools/lsp-client.js';
 export { SubagentAdapter } from './tools/subagent-adapter.js';
@@ -43,3 +44,5 @@ export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-ins
 export { CBMBridge } from './tools/cbm-bridge.js';
 export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
+export { runUpdate, upgradeNpmPackage, getLocalVersion, getRemoteVersion, compareVersions } from './core/updater.js';
+

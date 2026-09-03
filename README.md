@@ -16,7 +16,7 @@
 | **1.1 决策对齐** | 💬 IDE 聊天框 | `1A 2B 3A` (单选)<br>`A+B` (组合) / `先B后A` (演进)<br>`修改 Q1 为 B` (插话回溯) | 流式 Markdown 解析<br>自动涟漪影响分析 | 决策确定，自动触发门下省 |
 | **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`<br>**Gate**: `dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>100% 需求覆盖率对账表<br>聊天框 3 行 HUD 进度看板 |
 | **3. 六部 RUN** | 💬 IDE 聊天框 | `c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Test**: `dotnet test --verbosity quiet` | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>自动化质量门禁通过 |
-| **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng uat`<br>卡片判定: `1` 或 `y` (通过)<br>缺陷反馈: `2 <报错/现象描述>` | **Agent**: 原地补写边界测试 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
+| **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 网页看板: `sansheng html`<br>终端验收: `sansheng uat`<br>卡片判定: `1` 或 `y` (通过)<br>缺陷反馈: `2 <报错/现象描述>` | **看板**: 0 Token 本地自包含 HTML (Chrome/Edge 鼠标点选)<br>**Agent**: 原地补写边界测试 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `.sansheng/uat.html` (网页看板)<br>`[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
 | **5. 归档结项** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng archive`<br>聊天框: `archive` 或 `结项` | **Tools**: `shangshu.js` (`closeMilestone`)<br>**Skill**: `yongle-sync` / `yongle-sync-knowledge.js` | `TASK.md` ➔ `.sansheng/archive/`<br>`ROADMAP.md` 标记完成<br>清理临时文件，仓库 100% 纯净 |
 
 ---
@@ -161,23 +161,43 @@ sansheng status
 
 ### 阶段 4：交互式 UAT 验收与自愈复盘闭环
 
-所有代码与自动化单元测试通过后，触发 UAT 交付门禁：
+所有代码与自动化单元测试通过后，触发 UAT 交付门禁。
 
-#### 1. 方式 A：聊天框单项卡片验收
-AI 依次弹出当前 UAT 项（如 `[UAT-01: 超过 100 万行导出熔断提示]`）：
-- **判定通过**：输入 `1` 或 `y` ➔ 打勾 `- [x] UAT-01: Passed`，自动推进下一项；
-- **判定不通过**：输入 `2 导出时页面没有弹出 4001 错误提示框`
-  - 🤖 **工兵立即自愈**：
-    1. 定位源码并在测试工程补写 `Export_OverLimit_ShouldReturn4001` 复现用例；
-    2. 修复控制器/前端代码并跑通 `dotnet test`；
-    3. 原地重新提示用户复测；
-  - 💡 **复测通过后**：自动触发 Skill `yongle-postmortem` 将本次排查与修复经验沉淀至《永乐大典》。
+#### 📌 铁律：四要素用例标准与 PRD 预期对账（严禁以代码测代码）
+在 `TASK.md` 中生成的每一项 UAT 必须具备**四要素**（编号溯源、前置数据、操作步骤、🎯 PRD预期核对）：
+```markdown
+- [ ] `[UAT-01]` (溯源: REQ-01 / AC-1) 【订单列表异步导出正常流】
+  - **前置与数据**：登录 operator_test 运营账号，系统存在待发货状态订单
+  - **操作步骤**：进入【订单管理 ➔ 列表】➔ 勾选前 2 条 ➔ 点击右上角【批量导出】
+  - **PRD预期对照**：1秒内弹出成功提示：“导出任务已提交”；进入【下载中心】状态为“已完成”，下载 Excel 打开无乱码，客户手机号显示为 138****0000 脱敏格式。
+```
+- **门禁对账**：门下省执行 `auditUATCoverage`，严格校验每个 `[REQ-xx]` 是否 100% 被正向与异常 UAT 覆盖，缺项或无 PRD 预期直接阻断。
+
+---
+
+#### 验收执行的三种方式：
+
+#### 1. 方式 A：0 Token 本地交互式 HTML 验收看板（⭐ 最爽体验：浏览器鼠标点选）
+无需启动常驻服务或占用端口，纯本地 3ms 瞬间编译：
+```bash
+sansheng html
+```
+- **双击即开**：直接用 Chrome / Edge 双击打开 `.sansheng/uat.html`；
+- **鼠标直选与自动静默写回**：点击网页顶部的 **【📁 关联本地 TASK.md】** 授权一次，之后在网页上**每用鼠标勾选/取消一项，浏览器利用原生 File System Access API 自动实时写回磁盘的 `TASK.md`**（自动更新 `- [x]`）；
+- **四要素卡片与进度计算**：直观展示前置、步骤与高亮的 🎯 PRD 预期对照，实时展示通过百分比（如 `67% Passed`）；
+- **一键缺陷反馈**：点击卡片下方“记录反馈”，输入偏差后点击“复制自愈指令”，直接发给 AI 触发代码修复。
 
 #### 2. 方式 B：终端交互式独立验收
 ```bash
 sansheng uat
 ```
-在命令行控制台中逐项判定与自愈复测。
+命令行逐项展示需求溯源、前置数据、操作步骤与 PRD 预期对照表，支持终端键盘快捷判定与即时自愈。同时每次执行会自动同步刷新 `.sansheng/uat.html`。
+
+#### 3. 方式 C：聊天框单项卡片验收
+AI 依次在聊天窗口弹出当前 UAT 项四要素：
+- **判定通过**：输入 `1` 或 `y` ➔ 打勾 `- [x] UAT-01: Passed`，自动推进下一项；
+- **判定不通过**：输入 `2 <实际现象与PRD预期的偏差>` ➔ AI 对照需求文档原文定位源码偏差，补写复现用例、修复并原地复测；
+- **自愈复盘**：修复通过后自动触发 `yongle-postmortem` 将排查经验沉淀至《永乐大典》。
 
 ---
 
@@ -363,6 +383,7 @@ DSH 模型上下文可随时调用以下受控工具：
 | `sansheng sync-rules` | 多 IDE 协同开发时 | 嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译至 Copilot |
 | `sansheng sync-rules --export <ide>` | 导出规则至其他 IDE | 将集中维护的规则导出为 `.trae/rules.md` / `.cursorrules` 等 |
 | `sansheng status` | 随时查看进度 | 查看当前活跃 Phase 的 3 行 HUD 任务进度看板 |
+| `sansheng html` | 网页可视化鼠标勾选 | 0 Token 编译本地自包含 UAT 看板 (`.sansheng/uat.html`)，支持浏览器静默写回 |
 | `sansheng uat` | 命令行交互验收 | 启动交互式单项 UAT 验收与自愈修复循环 |
 | `sansheng archive` | 模块全部交付结项时 | 触发两级归档、更新 ROADMAP、清理缓存、同步《永乐大典》 |
 | `sansheng update` | 升级工作流引擎 | 从 NPM 检查并原地更新至最新版 (无须卸载)，无损增量合并配置与 IDE Prompt 模板 |

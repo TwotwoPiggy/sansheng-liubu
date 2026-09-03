@@ -29,13 +29,47 @@ export class Shangshu {
 
   /**
    * 检查并确保 TASK.md 严格处于滑动窗口限制以内 (< 150 行)
+   * 具备语义感知能力：优先在章节或任务边界折叠，并自动保持 Markdown 代码块闭合
    */
-  enforceSlidingWindow(content) {
+  enforceSlidingWindow(content, maxLines = 150) {
+    if (!content) return '';
     const lines = content.split('\n');
-    if (lines.length > 150) {
-      console.warn(`⚠️ [尚书省警告] TASK.md 超过 150 行 (${lines.length} 行)，建议进行 Phase 切片归档以防上下文截断！`);
+    if (lines.length <= maxLines) {
+      return content;
     }
-    return lines.slice(0, 150).join('\n');
+
+    console.warn(`⚠️ [尚书省警告] TASK.md 超过 ${maxLines} 行 (${lines.length} 行)，正在执行语义感知滑动窗口折叠！`);
+
+    // 寻找在 [maxLines - 30, maxLines] 范围内的安全语义切割点
+    let cutIndex = maxLines;
+    const minCut = Math.max(10, maxLines - 30);
+    
+    // 优先寻找二级/三级标题分界点
+    for (let i = maxLines - 1; i >= minCut; i--) {
+      const line = lines[i].trim();
+      if (line.startsWith('## ') || line.startsWith('### ')) {
+        cutIndex = i;
+        break;
+      }
+    }
+
+    const truncatedLines = lines.slice(0, cutIndex);
+
+    // 校验代码块 ``` 闭合状态，若未闭合则自动安全补全
+    let backtickCount = 0;
+    for (const l of truncatedLines) {
+      if (l.trim().startsWith('```')) {
+        backtickCount++;
+      }
+    }
+    if (backtickCount % 2 !== 0) {
+      truncatedLines.push('```');
+    }
+
+    truncatedLines.push('');
+    truncatedLines.push(`> ℹ️ *[尚书省提示] 历史任务进度已超出 ${maxLines} 行滑动窗口上限并自动折叠。完整阶段记录请查阅归档: .sansheng/archive/*`);
+
+    return truncatedLines.join('\n');
   }
 
   /**
