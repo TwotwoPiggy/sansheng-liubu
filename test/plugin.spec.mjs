@@ -56,7 +56,7 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
     assert.strictEqual(SanshengPlugin.default, undefined, '严禁包含 export default');
   });
 
-  it('2. apply 必须成功向 ctx.tools 注册全量 6 大三省六部核心工具', () => {
+  it('2. apply 必须成功向 ctx.tools 注册全量 7 大三省六部核心工具', () => {
     SanshengPlugin.apply(mockContext, {
       models: {
         architectTier: 'gemini-3.7-flash',
@@ -66,11 +66,12 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
       escalationMaxRetries: 2
     });
 
-    assert.strictEqual(mockTools.length, 6, '应注册 6 个核心 Tool');
+    assert.strictEqual(mockTools.length, 7, '应注册 7 个核心 Tool');
     
     const toolNames = mockTools.map(t => t.name);
     assert.ok(toolNames.includes('sansheng_codebase_map'));
     assert.ok(toolNames.includes('sansheng_task_status'));
+    assert.ok(toolNames.includes('sansheng_audit_plan'));
     assert.ok(toolNames.includes('sansheng_uat_gate'));
     assert.ok(toolNames.includes('sansheng_archive'));
     assert.ok(toolNames.includes('sansheng_sync_rules'));

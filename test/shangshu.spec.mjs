@@ -52,4 +52,48 @@ describe('尚书省 (Shangshu) 执行统领与滑动窗口语义感知测试套�
       shangshu.cleanTemporaryFiles();
     });
   });
+
+  it('5. buildWorkerSliceContext 能够为工兵生成纯净的任务微切片并过滤无关需求', () => {
+    const task = {
+      id: 'Task 1.2',
+      title: '实现手机号脱敏与空列表防御',
+      boundReqs: ['REQ-02', 'REQ-03']
+    };
+    const reqs = [
+      { id: 'REQ-01', title: '异步导出管道', acs: ['正常导出文件'] },
+      { id: 'REQ-02', title: '手机号脱敏', acs: ['138****0000 掩码'] },
+      { id: 'REQ-03', title: '空列表拦截', acs: ['按钮置灰禁用'] },
+      { id: 'REQ-04', title: '邮件通知', acs: ['发送激活邮件'] }
+    ];
+    const rules = [
+      { id: 'RULE-01', content: '敏感字段必须掩码' }
+    ];
+
+    const slice = shangshu.buildWorkerSliceContext(task, { reqs, rules });
+    assert.ok(slice.includes('Task 1.2: 实现手机号脱敏与空列表防御'));
+    assert.ok(slice.includes('REQ-02'));
+    assert.ok(slice.includes('REQ-03'));
+    // 无关需求 REQ-01 和 REQ-04 应该被过滤排除
+    assert.ok(!slice.includes('REQ-01 异步导出管道'));
+    assert.ok(!slice.includes('REQ-04 邮件通知'));
+    assert.ok(slice.includes('RULE-01'));
+    assert.ok(slice.includes('工兵特战执行守则'));
+  });
+
+  it('6. verifyTaskDiff 能够防范空修改与伪交付', () => {
+    const emptyResult = shangshu.verifyTaskDiff({}, '');
+    assert.strictEqual(emptyResult.passed, false);
+    assert.ok(emptyResult.reason.includes('Git Diff 为空'));
+
+    const validDiff = `
+--- a/src/ExportService.cs
++++ b/src/ExportService.cs
+@@ -10,3 +10,5 @@
++    if (list.Count == 0) return false;
++    var masked = MaskPhone(phone);
+`;
+    const validResult = shangshu.verifyTaskDiff({}, validDiff);
+    assert.strictEqual(validResult.passed, true);
+    assert.strictEqual(validResult.addedLineCount, 2);
+  });
 });

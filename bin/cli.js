@@ -12,6 +12,7 @@ import { LSPClient } from '../src/tools/lsp-client.js';
 import { CBMBridge } from '../src/tools/cbm-bridge.js';
 import { injectVSCodeEnhancements } from '../src/tools/vscode-injector.js';
 import { RuleSync } from '../src/tools/rule-sync.js';
+import { Menxia } from '../src/core/menxia.js';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'help';
@@ -37,6 +38,10 @@ async function main() {
     case 'status':
       showStatus();
       break;
+    case 'audit':
+    case 'audit-plan':
+      handleAuditPlanCommand();
+      break;
     case 'html':
     case 'uat-html':
       handleExportHtml(args[1]);
@@ -54,6 +59,24 @@ async function main() {
       showHelp();
       break;
   }
+}
+
+function handleAuditPlanCommand() {
+  const cwd = process.cwd();
+  const sanshengTask = path.join(cwd, '.sansheng', 'TASK.md');
+  const rootTask = path.join(cwd, 'TASK.md');
+  const taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : null);
+
+  if (!taskPath) {
+    console.log(`⚠️ 未找到活跃的 TASK.md（已检查 .sansheng/TASK.md 与 TASK.md）。请先输入需求启动对齐。`);
+    return;
+  }
+
+  const content = fs.readFileSync(taskPath, 'utf-8');
+  const menxia = new Menxia();
+  const auditResult = menxia.auditPlan(content, content);
+  const report = menxia.generateRejectionReport(auditResult);
+  console.log(`\n${report}\n`);
 }
 
 async function initProject() {
@@ -226,6 +249,7 @@ function showHelp() {
   sansheng map                  生成双层拓扑地图与索引 (.sansheng/codebase_map.md & codebase_index.json)
                                 (参数: --focus <path> 提取局部邻居切片, --clear-cache 清理增量指纹)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
+  sansheng audit-plan           门下省门禁：对开发计划 Plan 进行 100% 反向需求对账审计与封驳检测
   sansheng html [path]          0 Token 将已有项目的 task.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
                                 (可选指定路径，如: sansheng html ./task.md 或全向自动探测)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环

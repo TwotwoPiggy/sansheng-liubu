@@ -53,4 +53,5 @@ export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-ins
 export { CBMBridge } from './tools/cbm-bridge.js';
 export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
+export { createAuditPlanTool } from './dsh/tools/audit-plan-tool.js';
 export { runUpdate, upgradeNpmPackage, getLocalVersion, getRemoteVersion, compareVersions } from './core/updater.js';

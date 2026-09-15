@@ -157,6 +157,174 @@ ${uatSection}
       passed
     };
   }
+
+  /**
+   * 从 Plan Markdown 中解析任务列表及绑定的 REQ ID (SPEC §9)
+   */
+  parseTasksFromMarkdown(planMarkdown = '') {
+    if (!planMarkdown || typeof planMarkdown !== 'string') return [];
+    const lines = planMarkdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const tasks = [];
+    let currentTask = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // 匹配任务行，如 `- [ ] Task 1.1: ...` 或 `- [x] Task 1: ...` 或 `### Task 1: ...`
+      const taskHeaderMatch = line.match(/^(\s*-\s*\[([ xX])\]|\s*###?\s+)\s*`?\[?(Task\s*[^\]:`]+|Wave\s*\d+[^\]:`]*)\]?`?[:\s]*(.*)/i);
+
+      if (taskHeaderMatch) {
+        if (currentTask) {
+          tasks.push(finalizeParsedTask(currentTask));
+        }
+        currentTask = {
+          id: taskHeaderMatch[3].trim(),
+          title: (taskHeaderMatch[4] || '').trim(),
+          lines: [line]
+        };
+      } else if (currentTask) {
+        // 遇到下一个同级任务或高阶标题时结束当前任务
+        if (/^\s*-\s*\[\s*[ xX]?\s*\]/.test(line) || line.trim().startsWith('## ')) {
+          tasks.push(finalizeParsedTask(currentTask));
+          currentTask = null;
+        } else {
+          currentTask.lines.push(line);
+        }
+      }
+    }
+
+    if (currentTask) {
+      tasks.push(finalizeParsedTask(currentTask));
+    }
+
+    return tasks;
+  }
+
+  /**
+   * 对 Plan 进行严格反向需求对账审计 (SPEC §9)
+   * 拿原始需求逐条在 Plan 中检索责任 Task，杜绝计划阶段压缩丢失细节
+   */
+  auditPlan(reqs = [], plan = '') {
+    let normalizedReqs = reqs;
+    if (typeof reqs === 'string') {
+      const matches = reqs.match(/REQ-\d+/gi) || [];
+      normalizedReqs = [...new Set(matches.map(m => m.toUpperCase()))];
+    } else if (Array.isArray(reqs)) {
+      normalizedReqs = reqs.map(r => (typeof r === 'string' ? r : r.id)).filter(Boolean);
+    }
+
+    let parsedTasks = [];
+    if (typeof plan === 'string') {
+      parsedTasks = this.parseTasksFromMarkdown(plan);
+    } else if (Array.isArray(plan)) {
+      parsedTasks = plan;
+    }
+
+    const reqSet = new Set(normalizedReqs.map(r => r.toUpperCase()));
+    const totalReqs = reqSet.size;
+    const coveredReqs = new Set();
+    const invalidBoundReqs = new Set();
+    const unboundedTasks = [];
+
+    parsedTasks.forEach(t => {
+      const bound = t.boundReqs || [];
+      if (bound.length === 0) {
+        unboundedTasks.push(t.id || t.title || '未知任务');
+      } else {
+        bound.forEach(r => {
+          const u = r.toUpperCase();
+          if (reqSet.has(u)) {
+            coveredReqs.add(u);
+          } else {
+            invalidBoundReqs.add(u);
+          }
+        });
+      }
+    });
+
+    const uncoveredReqs = [...reqSet].filter(id => !coveredReqs.has(id));
+    const passed = totalReqs > 0
+      ? (uncoveredReqs.length === 0 && invalidBoundReqs.size === 0)
+      : (parsedTasks.length > 0);
+
+    return {
+      totalReqs,
+      coveredReqs: coveredReqs.size,
+      uncoveredReqs,
+      invalidBoundReqs: [...invalidBoundReqs],
+      unboundedTasks,
+      totalTasks: parsedTasks.length,
+      rate: totalReqs === 0 ? '100%' : `${Math.round((coveredReqs.size / totalReqs) * 100)}%`,
+      passed
+    };
+  }
+
+  /**
+   * 生成《门下省封驳差额单》(Rejection Report) 或放行确认 (SPEC §9)
+   */
+  generateRejectionReport(auditResult = {}) {
+    const {
+      passed = false,
+      totalReqs = 0,
+      coveredReqs = 0,
+      uncoveredReqs = [],
+      invalidBoundReqs = [],
+      unboundedTasks = [],
+      rate = '0%'
+    } = auditResult;
+
+    if (passed) {
+      return `### ✅ 【门下省门禁放行】开发计划审计通过！
+* **📊 需求覆盖率**：100% (${coveredReqs}/${totalReqs} 项原子需求已全额对账)
+* **🛡️ 状态**：无未覆盖遗漏项，开发计划符合高质量交付标准，准许录入 \`.sansheng/TASK.md\` 并放行至尚书省执行！`;
+    }
+
+    const missingSection = uncoveredReqs.length > 0
+      ? uncoveredReqs.map(r => `  - ❌ **\`[${r}]\`**：未在任何开发 Task 中规划对应实现与测试！`).join('\n')
+      : '  - （无遗漏原子需求）';
+
+    const invalidSection = invalidBoundReqs.length > 0
+      ? `\n* ⚠️ **虚假绑定 REQ (需求清单中不存在此编号)**：\n` + invalidBoundReqs.map(r => `  - \`[${r}]\``).join('\n')
+      : '';
+
+    const unboundedSection = unboundedTasks.length > 0
+      ? `\n* ❓ **悬空任务 (未标注溯源 [REQ-xx])**：\n` + unboundedTasks.map(t => `  - \`${t}\``).join('\n')
+      : '';
+
+    return `### ❌ 【门下省封驳】开发计划未通过门禁审计！(覆盖率: ${rate})
+* 🚨 **门禁封驳原因**：检测到需求细节逃逸或任务溯源缺失，开发计划被驳回。
+* 📌 **逃逸/未覆盖原子需求 (共 ${uncoveredReqs.length} 项)**：
+${missingSection}${invalidSection}${unboundedSection}
+
+---
+💡 **【尚书省待命指示】**：请根据上述《封驳差额单》，为遗漏的需求补齐具体实现 Task 与边界单测，重新提审通过后方可动工。`;
+  }
+
+  /**
+   * 生成独立 Auditor Agent 对抗式反向扫描专属 Prompt (SPEC §9)
+   */
+  generateAdversarialAuditPrompt(reqs = '', planMarkdown = '') {
+    const reqText = typeof reqs === 'string' ? reqs : JSON.stringify(reqs, null, 2);
+    return `你现在是门下省特任【严苛门禁审计官】。你的职责是彻底阻止存在细节遗漏的开发方案投入生产。
+
+【输入资产】
+1. 原始原子需求清单与约束：
+\`\`\`markdown
+${reqText}
+\`\`\`
+
+2. 候选开发计划 (Plan / TASK.md)：
+\`\`\`markdown
+${planMarkdown}
+\`\`\`
+
+【你的审计规程】
+1. **反向逐条检索**：以原始需求的每一个 [REQ-xx] 为标尺，在候选计划中反查其落实的 Task。
+2. **保真度与边界核查**：即使 Task 标题提及了该功能，但若漏掉了异常码、错误提示文案、防刷频控、超时或字段级校验，一律判定为【未覆盖】。
+3. **禁止臆测**：不得假设工兵在写代码时会“顺手实现”。任何未落在文字上的细节均视为遗漏。
+
+【判定输出格式】
+若存在遗漏，必须输出《门下省封驳差额单》并列出所有具体遗漏项；若 100% 确认无遗漏，输出门禁放行令。`;
+  }
 }
 
 /**
@@ -260,6 +428,22 @@ function finalizeAuditItem(item) {
     id: item.id,
     boundReqs: uniqueReqs,
     hasExpected: expected.length > 0,
+    fullText
+  };
+}
+
+/**
+ * 解析单个 Task 项的溯源 REQ 列表与标题
+ */
+function finalizeParsedTask(item) {
+  const fullText = item.lines.join('\n');
+  const reqMatches = fullText.match(/REQ-\d+/gi) || [];
+  const uniqueReqs = [...new Set(reqMatches.map(r => r.toUpperCase()))];
+
+  return {
+    id: item.id,
+    title: item.title,
+    boundReqs: uniqueReqs,
     fullText
   };
 }

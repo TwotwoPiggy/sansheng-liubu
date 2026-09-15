@@ -122,5 +122,72 @@ describe('门下省 (Menxia) 门禁审核与严格需求覆盖率对账测试套
     // UAT-02 是无源测试
     assert.ok(res.untraceableUats.includes('UAT-02'));
   });
+
+  it('10. parseTasksFromMarkdown 能够从 Plan Markdown 中解析任务与溯源 REQ', () => {
+    const planMarkdown = `
+## 🎯 当前活跃任务清单
+- [ ] Task 1.1: 搭建订单导出核心管线 [REQ-01]
+  - 编写 ExportService 管道逻辑
+- [x] Task 1.2: 手机号脱敏与空值防御 [REQ-02, REQ-03]
+  - 编写脱敏拦截器
+- [ ] Task 1.3: 悬空任务未绑定任何需求
+`;
+
+    const tasks = menxia.parseTasksFromMarkdown(planMarkdown);
+    assert.strictEqual(tasks.length, 3);
+    assert.strictEqual(tasks[0].id, 'Task 1.1');
+    assert.deepStrictEqual(tasks[0].boundReqs, ['REQ-01']);
+    assert.strictEqual(tasks[1].id, 'Task 1.2');
+    assert.deepStrictEqual(tasks[1].boundReqs, ['REQ-02', 'REQ-03']);
+    assert.strictEqual(tasks[2].id, 'Task 1.3');
+    assert.deepStrictEqual(tasks[2].boundReqs, []);
+  });
+
+  it('11. auditPlan 能够正确完成 100% 反向对账放行', () => {
+    const reqs = ['REQ-01', 'REQ-02', 'REQ-03'];
+    const planMarkdown = `
+- [ ] Task 1.1: 基础导出 [REQ-01]
+- [ ] Task 1.2: 脱敏与异常分支 [REQ-02, REQ-03]
+`;
+    const res = menxia.auditPlan(reqs, planMarkdown);
+    assert.strictEqual(res.passed, true);
+    assert.strictEqual(res.totalReqs, 3);
+    assert.strictEqual(res.coveredReqs, 3);
+    assert.strictEqual(res.uncoveredReqs.length, 0);
+    assert.strictEqual(res.rate, '100%');
+
+    const report = menxia.generateRejectionReport(res);
+    assert.ok(report.includes('【门下省门禁放行】'));
+    assert.ok(report.includes('100%'));
+  });
+
+  it('12. auditPlan 能够精准拦截需求逃逸并生成《门下省封驳差额单》', () => {
+    const reqs = ['REQ-01', 'REQ-02', 'REQ-03'];
+    const incompletePlan = `
+- [ ] Task 1.1: 仅实现了导出 [REQ-01]
+- [ ] Task 1.2: 没写溯源标签的任务
+`;
+    const res = menxia.auditPlan(reqs, incompletePlan);
+    assert.strictEqual(res.passed, false);
+    assert.strictEqual(res.totalReqs, 3);
+    assert.strictEqual(res.coveredReqs, 1);
+    assert.ok(res.uncoveredReqs.includes('REQ-02'));
+    assert.ok(res.uncoveredReqs.includes('REQ-03'));
+    assert.strictEqual(res.unboundedTasks.length, 1);
+
+    const report = menxia.generateRejectionReport(res);
+    assert.ok(report.includes('【门下省封驳】'));
+    assert.ok(report.includes('REQ-02'));
+    assert.ok(report.includes('REQ-03'));
+    assert.ok(report.includes('悬空任务'));
+  });
+
+  it('13. generateAdversarialAuditPrompt 能够生成严苛的对抗审计 Prompt 治具', () => {
+    const prompt = menxia.generateAdversarialAuditPrompt(['REQ-01', 'REQ-02'], '- [ ] Task 1 [REQ-01]');
+    assert.ok(prompt.includes('门下省特任【严苛门禁审计官】'));
+    assert.ok(prompt.includes('REQ-01'));
+    assert.ok(prompt.includes('REQ-02'));
+    assert.ok(prompt.includes('封驳差额单'));
+  });
 });
 

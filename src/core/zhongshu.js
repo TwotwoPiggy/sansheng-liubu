@@ -52,6 +52,69 @@ ${formattedOptions}`;
 
     return `### ⚠️ 核心业务边界与铁律 (Invariants & Rules)\n${list}`;
   }
+
+  /**
+   * 生成标准原子需求清单规范模板 (SPEC §2, §9)
+   * 必须包含 [REQ-xx] 离散编号，并强制挂载 Given-When-Then 形式的验收准则 (AC)
+   */
+  formatRequirements(reqs = []) {
+    const safeReqs = Array.isArray(reqs) ? reqs : [];
+    if (safeReqs.length === 0) {
+      return `### 📋 原子需求清单 (Atomic Requirements & AC)\n- **[REQ-01 核心业务功能]**\n  - **AC-1 (正常流)**: 满足基础业务输入与预期输出\n  - **AC-2 (边界/异常流)**: 异常超限参数或边界场景下给出友好拦截与提示`;
+    }
+
+    const list = safeReqs.map((r, i) => {
+      const id = r?.id || `REQ-${String(i + 1).padStart(2, '0')}`;
+      const title = r?.title || (typeof r === 'string' ? r : `需求项 ${id}`);
+      const acs = Array.isArray(r?.acs) && r.acs.length > 0
+        ? r.acs
+        : (r?.ac ? [r.ac] : ['正常流满足预期业务流转', '边界流及异常输入受到合规防御拦截']);
+      
+      const acList = acs.map((acText, acIdx) => `  - **AC-${acIdx + 1}**: ${acText}`).join('\n');
+      return `- **[${id} ${title}]**\n${acList}`;
+    }).join('\n');
+
+    return `### 📋 原子需求清单 (Atomic Requirements & AC)\n${list}`;
+  }
+
+  /**
+   * 从 Markdown 文本中提取解析结构化原子需求清单 (SPEC §9)
+   */
+  parseRequirementsFromMarkdown(markdown = '') {
+    if (!markdown || typeof markdown !== 'string') return [];
+    const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const reqs = [];
+    let currentReq = null;
+
+    for (const line of lines) {
+      // 匹配行首或列表项中的 [REQ-xx] 标签，如 `- **[REQ-01 订单导出]**` 或 `* [REQ-02] ...`
+      const match = line.match(/(?:^|\s*[-*]\s*(?:\*\*)?)\[?(REQ-\d+)\]?(?:\s+([^\]*]+))?/i);
+      if (match) {
+        if (currentReq) {
+          reqs.push(currentReq);
+        }
+        currentReq = {
+          id: match[1].toUpperCase(),
+          title: (match[2] || '').trim() || match[1].toUpperCase(),
+          acs: [],
+          lines: [line]
+        };
+      } else if (currentReq) {
+        // 匹配验收标准 AC-x，如 `- **AC-1 (正常流)**: ...`
+        const acMatch = line.match(/[-*]\s*(?:\*\*)?AC-\d+.*?[：:](.*)/i);
+        if (acMatch) {
+          currentReq.acs.push(acMatch[1].trim());
+        }
+        currentReq.lines.push(line);
+      }
+    }
+
+    if (currentReq) {
+      reqs.push(currentReq);
+    }
+
+    return reqs;
+  }
 }
 
 /**

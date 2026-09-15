@@ -12,10 +12,10 @@
 | 阶段 | 执行位置 | 开发者输入 (敲什么) | 底层调用的命令 / Skill | 核心产物 / 状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | **0. 环境准备** | 🖥️ 终端 | `sansheng init`<br>`sansheng map`<br>`sansheng update` | `csharp-ls`, `codebase-memory-mcp`<br>`codebase-map.js`, `updater.js` | `.sansheng/config.json`<br>`.sansheng/codebase_map.md`<br>NPM 原地热升级与规则自愈 |
-| **1. 中书省 ALIGN** | 💬 IDE 聊天框 | 直接输入需求文本，或：<br>`/sansheng [需求内容]` | **Skill**: `yongle-search` / `yongle-hybrid-search.js`<br>**Tools**: `codebase-map.js`, `tree-sitter` | 四要素微引用质询<br>`[REQ-xx]` 原子清单<br>`[RULE-xx]` 边界铁律 |
+| **1. 中书省 ALIGN** | 💬 IDE 聊天框 | 直接输入需求文本，或：<br>`/sansheng [需求内容]` | **Skill**: `yongle-search` / `yongle-hybrid-search.js`<br>**Tools**: `codebase-map.js`, `tree-sitter` | 四要素微引用质询<br>`[REQ-xx]` 原子粉碎清单 (含AC，禁直出Plan)<br>`[RULE-xx]` 边界铁律 |
 | **1.1 决策对齐** | 💬 IDE 聊天框 | `1A 2B 3A` (单选)<br>`A+B` (组合) / `先B后A` (演进)<br>`修改 Q1 为 B` (插话回溯) | 流式 Markdown 解析<br>自动涟漪影响分析 | 决策确定，自动触发门下省 |
-| **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`<br>**Gate**: `dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>100% 需求覆盖率对账表<br>聊天框 3 行 HUD 进度看板 |
-| **3. 六部 RUN** | 💬 IDE 聊天框 | `c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Test**: `dotnet test --verbosity quiet` | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>自动化质量门禁通过 |
+| **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端审计: `sansheng audit-plan`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`, `sansheng_audit_plan`<br>**Gate**: 对抗式反向扫描 / 封驳差额单<br>`dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>显式 `[REQ-xx]` 双向对账<br>门禁放行证书 / 封驳差额单<br>聊天框 3 行 HUD 进度看板 |
+| **3. 六部 RUN** | 💬 IDE 聊天框 | `c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Slice**: 微切片投喂 + 测试断言守门 + Diff对账 | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>Git Diff 行级落地核查 |
 | **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 网页看板: `sansheng html`<br>终端验收: `sansheng uat`<br>卡片判定: `1` 或 `y` (通过)<br>缺陷反馈: `2 <报错/现象描述>` | **看板**: 0 Token 本地自包含 HTML (Chrome/Edge 鼠标点选)<br>**Agent**: 原地补写边界测试 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `.sansheng/uat.html` (网页看板)<br>`[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
 | **5. 归档结项** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng archive`<br>聊天框: `archive` 或 `结项` | **Tools**: `shangshu.js` (`closeMilestone`)<br>**Skill**: `yongle-sync` / `yongle-sync-knowledge.js` | `TASK.md` ➔ `.sansheng/archive/`<br>`ROADMAP.md` 标记完成<br>清理临时文件，仓库 100% 纯净 |
 
@@ -123,17 +123,26 @@ sansheng update
 
 当决策对齐完成，门下省自动接管：
 
-#### 1. 生成活跃任务看板与质量门禁
-- **开发者在聊天框输入**：`开跑`、`定稿` 或 `继续`
+#### 1. 显式需求绑定与对抗式反向扫描封驳 (防漏核心)
+- **显式 Task 绑定**：每个开发 Task 必须显式标注其兑现的原子需求 `[REQ-xx]`。
+- **对抗式反向扫描 (Adversarial Audit)**：门下省以所有 `[REQ-xx]` 清单为标尺反查候选 Plan。
+  - 若存在任何需求未被 Task 落实，或遗漏了异常分支与字段约束，**立即出具《门下省封驳差额单》阻断放行**；
+  - 强制打回补齐，直到需求覆盖率达 100% 方准放行动工！
+- **终端一键对账**：
+  ```bash
+  sansheng audit-plan
+  ```
+
+#### 2. 生成活跃任务看板与质量门禁
 - **底层落盘状态文件**：`.sansheng/TASK.md`（**强制控制在 150 行以内**）
 - **门禁定义清单 (Quality Gates)**：
   1. **自动化单测门禁**：`dotnet test --verbosity quiet`（0 Failed, 0 Error） / `npx vitest run`（100%通过）；
   2. **边界反例用例**：针对 `[RULE-01]` 至 `[RULE-04]` 的专用拦截测试方法；
   3. **一键冒烟命令**：`dotnet test --filter "Category=Smoke"`；
   4. **人工 UAT 验收项**：`[UAT-01]`、`[UAT-02]`。
-- **100% 覆盖率对账**：严格校验 `[REQ-01 ~ xx]` 是否 100% 绑定到各 Wave 的具体 Task。
+- **100% 覆盖率对账**：严格校验 `[REQ-01 ~ xx]` 是否 100% 绑定到各 Wave 的具体 Task 与 UAT。
 
-#### 2. 对话框极简 3 行 HUD 回显
+#### 3. 对话框极简 3 行 HUD 回显
 AI 严禁长篇刷屏输出伪代码，仅回显 3 行：
 ```markdown
 📊 [阶段进度] Wave 1/2: 核心导出管道与 Hangfire 作业 (.NET 8)
@@ -141,7 +150,7 @@ AI 严禁长篇刷屏输出伪代码，仅回显 3 行：
 👉 回复 c (全自动开跑) 或 s (单步推进)
 ```
 
-#### 3. (可选) 终端随时查看进度
+#### 4. (可选) 终端随时查看进度
 ```bash
 sansheng status
 ```
@@ -155,8 +164,10 @@ sansheng status
   - `c` 或 `r` ➔ 全自动执行当前 Phase 的全部 Task 并跑通测试
   - `s` 或 `n` ➔ 单步执行当前 Task 并汇报
 
-#### 2. 底层工兵执行机制
-- **纯净工兵派生**：通过 `invoke_subagent` 或 `bin/worker.js` 派生独立上下文，每次仅携带当前 Task 与 1~2 个源码文件（0 历史 Token 负担）；
+#### 2. 底层工兵执行机制（微切片 + 断言守门 + Diff 对账）
+- **纯净微切片投喂 (Zero-Dilution Context)**：向工兵派生独立上下文时，**严禁输入全局 PRD**，仅注入当前 Task 绑定的 `[REQ-xx]` 细节与 `[RULE-xx]` 边界，把注意力锁定在最小单元，杜绝上下文稀释导致偷工减料；
+- **测试断言守门 (TDD)**：工兵编码前，必须先确认或编写该需求边界的单测，全绿前严禁声称交付；
+- **Git Diff 行级对账**：提交前核对 `git diff`，必须确认 PRD 约定的校验、状态码与文案在代码中有具体语句落实，拦截伪实现与空 TODO；
 - **0-Token 物理重构**：
   - 跨文件重命名/跳转调用 LSP 原生指令（`csharp-ls` / `vue-language-server`）；
   - 代码格式化调用本地命令（`dotnet format` / `npx biome check --write`），严禁消耗 LLM Token 调缩进；

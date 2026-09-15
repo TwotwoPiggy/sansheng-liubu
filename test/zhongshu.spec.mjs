@@ -62,4 +62,46 @@ describe('中书省 (Zhongshu) 需求起草与参数防御性测试套件', () =
     assert.ok(output.includes('核心业务边界与铁律'));
     assert.ok(output.includes('[RULE-01 基础铁律]'));
   });
+
+  it('6. formatRequirements 能够将需求粉碎为规范挂载 AC 的离散清单', () => {
+    const reqs = [
+      {
+        id: 'REQ-01',
+        title: '订单异步导出',
+        acs: ['勾选订单后点击导出生成 xlsx 文件', '空列表时导出按钮置灰禁用']
+      },
+      {
+        id: 'REQ-02',
+        title: '手机号脱敏',
+        ac: '导出的 Excel 中手机号按 138****0000 掩码'
+      }
+    ];
+
+    const output = zhongshu.formatRequirements(reqs);
+    assert.ok(output.includes('[REQ-01 订单异步导出]'));
+    assert.ok(output.includes('**AC-1**: 勾选订单后点击导出生成 xlsx 文件'));
+    assert.ok(output.includes('**AC-2**: 空列表时导出按钮置灰禁用'));
+    assert.ok(output.includes('[REQ-02 手机号脱敏]'));
+    assert.ok(output.includes('**AC-1**: 导出的 Excel 中手机号按 138****0000 掩码'));
+  });
+
+  it('7. parseRequirementsFromMarkdown 能够从 Markdown 文本中精准提取离散 REQ 与 AC', () => {
+    const markdown = `
+### 📋 原子需求清单 (Atomic Requirements & AC)
+- **[REQ-01 订单异步导出]**
+  - **AC-1**: 正常流点击导出
+  - **AC-2**: 异常拦截
+- [REQ-02 手机号脱敏]
+  - AC-1: 手机号掩码脱敏
+`;
+
+    const parsed = zhongshu.parseRequirementsFromMarkdown(markdown);
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].id, 'REQ-01');
+    assert.strictEqual(parsed[0].title, '订单异步导出');
+    assert.strictEqual(parsed[0].acs.length, 2);
+    assert.strictEqual(parsed[1].id, 'REQ-02');
+    assert.strictEqual(parsed[1].title, '手机号脱敏');
+    assert.strictEqual(parsed[1].acs.length, 1);
+  });
 });

@@ -172,6 +172,95 @@ export class Shangshu {
 
     console.log(`🎉 [尚书省结项] 项目开发全链路圆满完成！`);
   }
+
+  /**
+   * 为工兵构建聚焦微切片上下文 (Zero-Dilution Worker Context) (SPEC §9, §16)
+   * 仅打包当前 Task 关联的 [REQ-xx] 细节与 [RULE-xx] 边界，杜绝上下文污染导致的偷工减料
+   */
+  buildWorkerSliceContext(task = {}, options = {}) {
+    const { reqs = [], rules = [] } = options;
+    const taskId = task?.id || '当前指定任务';
+    const taskTitle = task?.title || (typeof task === 'string' ? task : '未定义任务描述');
+    const boundReqs = Array.isArray(task?.boundReqs) ? task.boundReqs.map(r => r.toUpperCase()) : [];
+
+    // 过滤与当前任务严格相关的 REQ 条目
+    const relevantReqs = (Array.isArray(reqs) ? reqs : []).filter(r => {
+      const id = typeof r === 'string' ? r.toUpperCase() : (r?.id || '').toUpperCase();
+      return boundReqs.includes(id);
+    });
+
+    let reqSection = '';
+    if (relevantReqs.length > 0) {
+      reqSection = relevantReqs.map(r => {
+        if (typeof r === 'string') return `- **[${r}]** 对应业务验收细节`;
+        const title = r.title || r.id;
+        const acs = Array.isArray(r.acs) && r.acs.length > 0
+          ? r.acs.map((ac, idx) => `    * **AC-${idx + 1}**: ${ac}`).join('\n')
+          : '    * 满足既定正常流与异常流业务准则';
+        return `- **[${r.id} ${title}]**\n${acs}`;
+      }).join('\n');
+    } else if (boundReqs.length > 0) {
+      reqSection = boundReqs.map(r => `- **[${r}]** 对应 PRD 细节约定`).join('\n');
+    } else {
+      reqSection = `> ⚠️ *[门下省警告] 当前任务未显式绑定 [REQ-xx]，请严格遵守需求与测试守门员机制！*`;
+    }
+
+    let ruleSection = '';
+    const safeRules = Array.isArray(rules) ? rules : [];
+    if (safeRules.length > 0) {
+      ruleSection = safeRules.map((r, i) => {
+        const id = r?.id || `RULE-${String(i + 1).padStart(2, '0')}`;
+        const content = r?.content || r?.text || (typeof r === 'string' ? r : '未定义规则内容');
+        return `- **[${id}]** ${content}`;
+      }).join('\n');
+    } else {
+      ruleSection = `- **[RULE-01]** 严禁破坏现有业务单测，外部输入必须执行严格防御校验。`;
+    }
+
+    return `### 🎯 尚书省工兵当前专属任务切片 (Task Context Slice)
+* **当前执行任务**：\`${taskId}: ${taskTitle}\`
+
+#### 📋 绑定的原子需求细节 (已剔除无关需求干扰):
+${reqSection}
+
+#### ⚠️ 适用的业务边界与铁律契约:
+${ruleSection}
+
+#### 🛡️ 工兵特战执行守则:
+1. **测试断言守门**：先为上述需求细节编写/确认自动化测试用例，全绿前严禁声称完成。
+2. **零副作用控制**：仅修改当前任务直接相关的最小文件集，严禁越界扩散改动。
+3. **Diff 行级落地**：提交前必须自检 Git Diff，确保 PRD 约定的边界与异常在代码中有具体语句落实，严禁伪实现。`;
+  }
+
+  /**
+   * 验证工兵交付的 Git Diff 是否真实落实了任务改动 (SPEC §9)
+   */
+  verifyTaskDiff(task = {}, gitDiffText = '') {
+    if (!gitDiffText || typeof gitDiffText !== 'string' || gitDiffText.trim().length === 0) {
+      return {
+        passed: false,
+        reason: 'Git Diff 为空，未检测到任何实际源码修改（存在伪交付风险）'
+      };
+    }
+
+    const addedLines = gitDiffText
+      .split('\n')
+      .filter(l => l.startsWith('+') && !l.startsWith('+++'))
+      .map(l => l.substring(1).trim());
+
+    if (addedLines.length === 0) {
+      return {
+        passed: false,
+        reason: '未检测到任何新增或修改的代码逻辑'
+      };
+    }
+
+    return {
+      passed: true,
+      addedLineCount: addedLines.length,
+      sampleAdded: addedLines.slice(0, 3)
+    };
+  }
 }
 
 export function executeArchive() {
