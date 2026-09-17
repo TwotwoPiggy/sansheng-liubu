@@ -44,7 +44,7 @@ export { Zhongshu } from './core/zhongshu.js';
 export { Menxia } from './core/menxia.js';
 export { Shangshu, executeArchive } from './core/shangshu.js';
 export { runInteractiveUAT, parseUATBlocks, markUATItemPassed } from './core/uat-runner.js';
-export { compileUATToHtml, exportUATHtml } from './core/uat-html-compiler.js';
+export { compileUATToHtml, exportUATHtml, serveUATHtml, watchUATHtml, findActiveTaskOrPlanPath } from './core/uat-html-compiler.js';
 export { extractCodebaseMap, queryFocusedMap, parseCodeFile, buildCodebaseGraph, clearMapCache } from './tools/codebase-map.js';
 export { LSPClient } from './tools/lsp-client.js';
 export { SubagentAdapter } from './tools/subagent-adapter.js';

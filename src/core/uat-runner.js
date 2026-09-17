@@ -2,19 +2,19 @@ import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
 import { YongleBridge } from '../tools/yongle-bridge.js';
+import { findActiveTaskOrPlanPath } from './uat-html-compiler.js';
 
 /**
  * 交互式单项 UAT 验收断言引擎 (Interactive UAT Gating Loop)
  * 支持结构化四要素（溯源、前置与数据、操作步骤、PRD预期对照）高亮展示与闭环自愈
+ * @param {object} [options]
  */
-export async function runInteractiveUAT() {
-  const cwd = process.cwd();
-  const sanshengTask = path.join(cwd, '.sansheng/TASK.md');
-  const rootTask = path.join(cwd, 'TASK.md');
-  const taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : sanshengTask);
+export async function runInteractiveUAT(options = {}) {
+  const cwd = options.cwd || process.cwd();
+  const taskPath = findActiveTaskOrPlanPath(cwd, options.taskPath);
   
-  if (!fs.existsSync(taskPath)) {
-    console.log(`⚠️ 未找到 TASK.md（已检查 .sansheng/TASK.md 与 TASK.md），无法启动 UAT 验收。`);
+  if (!taskPath || !fs.existsSync(taskPath)) {
+    console.log(`⚠️ 未找到任务或测试计划文件（已检查 TASK.md, task.md, test-plan.md 等），无法启动 UAT 验收。`);
     return;
   }
 

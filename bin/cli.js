@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { extractCodebaseMap, queryFocusedMap, clearMapCache } from '../src/tools/codebase-map.js';
 import { runInteractiveUAT } from '../src/core/uat-runner.js';
-import { exportUATHtml } from '../src/core/uat-html-compiler.js';
+import { exportUATHtml, serveUATHtml, watchUATHtml } from '../src/core/uat-html-compiler.js';
 import { executeArchive } from '../src/core/shangshu.js';
 import { runUpdate, getLocalVersion } from '../src/core/updater.js';
 import { promptAndInstallYongle } from '../src/tools/yongle-installer.js';
@@ -44,7 +44,7 @@ async function main() {
       break;
     case 'html':
     case 'uat-html':
-      handleExportHtml(args[1]);
+      await handleExportHtml(args.slice(1));
       break;
     case 'uat':
       try { exportUATHtml(); } catch (e) {}
@@ -228,11 +228,74 @@ function showStatus() {
   console.log(`\n👉 回复 c (全自动推进) 或 s (单步推进)`);
 }
 
-function handleExportHtml(targetPath) {
+async function handleExportHtml(cliArgs = []) {
+  const isWatch = cliArgs.includes('--watch') || cliArgs.includes('-w');
+  const isServe = cliArgs.includes('--serve') || cliArgs.includes('-s');
+  const portIdx = cliArgs.indexOf('--port');
+  const customPort = portIdx > -1 && cliArgs[portIdx + 1] ? parseInt(cliArgs[portIdx + 1], 10) : 3901;
+
+  // 提取路径参数（排除 flag 参数及其参数值）
+  const targetPath = cliArgs.find((arg, idx) => {
+    if (arg.startsWith('-')) return false;
+    if (idx > 0 && cliArgs[idx - 1] === '--port') return false;
+    return true;
+  });
+
+  if (isWatch) {
+    try {
+      console.log(`👀 正在监听本地任务/测试计划变动并自动重新编译 uat.html...`);
+      const watcher = watchUATHtml({ taskPath: targetPath }, (rebuildRes) => {
+        const timeStr = new Date().toLocaleTimeString();
+        console.log(`[${timeStr}] ⚡ 检测到 ${path.basename(rebuildRes.taskPath)} 变动，已自动重新编译: ${rebuildRes.outputPath} (${rebuildRes.uatCount} 项)`);
+      });
+      console.log(`   ➔ 📄 监听目标: ${path.relative(process.cwd(), watcher.taskPath)}`);
+      console.log(`   ➔ 🎯 输出路径: ${path.relative(process.cwd(), watcher.outputPath)}`);
+      console.log(`👉 提示: 外部或编辑器保存文件即可自动触发重构编译，按 Ctrl+C 安全退出。\n`);
+      await new Promise(() => {});
+    } catch (e) {
+      console.log(`\n⚠️ 启动监听失败: ${e.message}\n`);
+    }
+    return;
+  }
+
+  if (isServe) {
+    try {
+      console.log(`🚀 正在启动 0 依赖 UAT 本地实时热同步服务器...`);
+      const { url, fileName, taskPath } = await serveUATHtml({
+        taskPath: targetPath,
+        port: customPort,
+      });
+      console.log(`\n🎉 本地 UAT 热同步服务已就绪！`);
+      console.log(`   ➔ 📄 绑定文件: ${fileName} (${path.relative(process.cwd(), taskPath)})`);
+      console.log(`   ➔ 🌐 访问地址: ${url}`);
+      console.log(`   ➔ ⚡ 实时双向热同步已激活：在浏览器中勾选将免授权即时写回磁盘，外部修改亦自动刷新！`);
+      console.log(`\n👉 提示: 按 Ctrl+C 即可安全退出服务。\n`);
+
+      // 自动尝试打开系统默认浏览器
+      try {
+        const { exec } = await import('child_process');
+        if (process.platform === 'win32') {
+          exec(`start ${url}`);
+        } else if (process.platform === 'darwin') {
+          exec(`open ${url}`);
+        } else {
+          exec(`xdg-open ${url}`);
+        }
+      } catch (e) {}
+
+      // 保持进程常驻服务请求
+      await new Promise(() => {});
+    } catch (e) {
+      console.log(`\n⚠️ 启动热同步服务失败: ${e.message}\n`);
+    }
+    return;
+  }
+
   const res = exportUATHtml({ taskPath: targetPath });
   if (res.success) {
     console.log(`\n🎉 ${res.message}`);
-    console.log(`💡 提示: 您可以直接用默认浏览器双击打开此 HTML 文件，体验鼠标勾选与自动静默保存！\n`);
+    console.log(`💡 提示: 看板内已增加【📥 从本地 MD 重载更新】与【💾 立即同步到 MD】双向快捷按钮！`);
+    console.log(`💡 高级提示: 您也可使用 \`sansheng html --watch\` (自动监听重构) 或 \`sansheng html --serve\` (免授权实时服务)。\n`);
   } else {
     console.log(`\n⚠️ ${res.message}\n`);
   }
@@ -250,8 +313,8 @@ function showHelp() {
                                 (参数: --focus <path> 提取局部邻居切片, --clear-cache 清理增量指纹)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度
   sansheng audit-plan           门下省门禁：对开发计划 Plan 进行 100% 反向需求对账审计与封驳检测
-  sansheng html [path]          0 Token 将已有项目的 task.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
-                                (可选指定路径，如: sansheng html ./task.md 或全向自动探测)
+  sansheng html [path]          0 Token 将已有项目的 task.md 或 test-plan.md 编译为本地交互式网页验收看板 (.sansheng/uat.html)
+                                (参数: --watch / -w 监听文件变动并自动重新编译, --serve / -s 启动免授权本地实时双向服务)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环
   sansheng archive              执行项目两级归档并同步至《永乐大典》
   `);

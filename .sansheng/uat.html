@@ -18,6 +18,7 @@
       --warning: #f59e0b;
       --warning-bg: rgba(245, 158, 11, 0.12);
       --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
       --tag-bg: #334155;
       --code-bg: #0f172a;
     }
@@ -35,34 +36,70 @@
         --warning: #d97706;
         --warning-bg: #fffbeb;
         --danger: #dc2626;
+        --danger-bg: #fef2f2;
         --tag-bg: #f1f5f9;
         --code-bg: #f1f5f9;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
     body { background-color: var(--bg); color: var(--text-main); line-height: 1.6; padding: 24px 16px; }
-    .container { max-width: 900px; margin: 0 auto; }
+    .container { max-width: 920px; margin: 0 auto; }
     
     /* Header */
-    header { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--card-border); }
+    header { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--card-border); }
     .header-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     h1 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     .badge-0token { font-size: 0.75rem; background: var(--success-bg); color: var(--success); padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--success); font-weight: normal; }
     
+    /* Permanent Sync Banner */
+    .sync-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      font-size: 0.88rem;
+      transition: all 0.3s ease;
+    }
+    .sync-banner.banner-warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning);
+      color: var(--warning);
+    }
+    .sync-banner.banner-success {
+      background: var(--success-bg);
+      border: 1px solid var(--success);
+      color: var(--success);
+    }
+    .sync-banner.banner-danger {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .banner-content { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    .banner-actions { display: flex; gap: 8px; align-items: center; }
+
     /* Progress Dashboard */
     .progress-box { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin: 16px 0; }
-    .progress-stats { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 8px; }
+    .progress-stats { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
     .progress-bar-bg { background: var(--tag-bg); border-radius: 9999px; height: 10px; overflow: hidden; }
     .progress-bar-fill { background: linear-gradient(90deg, var(--primary), var(--success)); height: 100%; transition: width 0.3s ease; }
     
     /* Action Bar */
     .action-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     button { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--card-border); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
     button:hover { border-color: var(--primary); color: var(--primary); }
     button.btn-primary { background: var(--primary); color: #ffffff; border-color: var(--primary); }
     button.btn-primary:hover { background: var(--primary-hover); }
+    button.btn-warning { background: var(--warning); color: #ffffff; border-color: var(--warning); font-weight: 600; }
+    button.btn-warning:hover { opacity: 0.9; }
+    button.btn-success { background: var(--success); color: #ffffff; border-color: var(--success); }
+    button.btn-success:hover { opacity: 0.9; }
     button.btn-active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+    button.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
     
     /* Tabs */
     .filter-tabs { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 2px; }
@@ -118,7 +155,7 @@
       <div class="progress-box">
         <div class="progress-stats">
           <span>验收通过进度: <strong id="progress-text">1 / 3 (33%)</strong></span>
-          <span id="sync-status">💾 本地离线就绪</span>
+          <span id="sync-status">⏳ 正在探测本地持久化连接...</span>
         </div>
         <div class="progress-bar-bg">
           <div id="progress-fill" class="progress-bar-fill" style="width: 33%;"></div>
@@ -126,11 +163,25 @@
       </div>
     </header>
 
+    <!-- 防脱节持久化告警横幅 -->
+    <div id="sync-banner" class="sync-banner banner-warning">
+      <div class="banner-content">
+        <span id="banner-icon">⚠️</span>
+        <span id="banner-text">正在检查本地 TASK.md 关联状态...</span>
+      </div>
+      <div class="banner-actions">
+        <button id="btn-banner-action" class="btn-warning btn-sm" onclick="handleBannerAction()">📁 关联本地文件</button>
+      </div>
+    </div>
+
     <div class="action-bar">
       <div class="btn-group">
-        <button id="btn-link-file" class="btn-primary" onclick="linkLocalFile()">📁 关联本地 TASK.md (自动静默保存)</button>
-        <button onclick="copyLatestMarkdown()">📋 复制已更新 Markdown</button>
-        <button onclick="downloadMarkdown()">💾 下载更新文件</button>
+        <button id="btn-link-file" class="btn-primary" onclick="handleMainLinkButtonClick()">📁 关联本地 TASK.md (自动静默保存)</button>
+        <button id="btn-change-file" style="display: none;" onclick="linkLocalFile(true)">🔄 切换关联</button>
+        <button id="btn-reload-md" onclick="reloadFromLocalMarkdown()" title="在外部修改了 Markdown 时，点击立即重新读取最新内容更新看板">📥 从本地 MD 重载更新</button>
+        <button id="btn-sync-to-md" onclick="forceSyncToLocalMarkdown()" title="将当前页面勾选状态强制写回本地 Markdown 文件">💾 立即同步到 MD</button>
+        <button onclick="copyLatestMarkdown()">📋 复制 Markdown</button>
+        <button id="btn-download" onclick="downloadMarkdown()">💾 导出文件</button>
       </div>
       <div class="filter-tabs">
         <button class="filter-btn active" onclick="filterItems('all', this)">全部 (<span id="count-all">3</span>)</button>
@@ -145,13 +196,94 @@
   <div id="toast"></div>
 
   <script>
+    const SOURCE_FILE_NAME = "TASK.md";
+    const SOURCE_REL_PATH = ".sansheng\\TASK.md";
+    const IS_SERVE_MODE = false;
+    const SERVE_PORT = null;
+
     let items = [{"id":"UAT-01","passed":true,"title":"订单列表异步导出正常流","trace":"REQ-01 / AC-1","preconditions":"登录 `operator_test` 运营账号，系统存在待发货状态订单","steps":"进入【订单管理 ➔ 列表】➔ 勾选前 2 条 ➔ 点击右上角【批量导出】","expected":"1秒内弹出 `\u003cel-message>` 成功提示：“导出任务已提交”；进入【下载中心】状态为“已完成”，下载 Excel 打开无乱码，客户手机号显示为 138****0000 脱敏格式。","rawHeaderLine":"- [x] `[UAT-01]` (溯源: REQ-01 / AC-1) 【订单列表异步导出正常流】","rawText":"订单列表异步导出正常流"},{"id":"UAT-02","passed":false,"title":"超过阈值熔断拦截","trace":"REQ-01 / AC-2","preconditions":"筛选全量订单（勾选或总数 > 10,000 条）","steps":"点击【批量导出】按钮","expected":"前端直接弹出 Warning 提示：“单次导出不得超过 10,000 条”，不触发后端接口，导出按钮不锁定。","rawHeaderLine":"- [ ] `[UAT-02]` (溯源: REQ-01 / AC-2) 【超过阈值熔断拦截】","rawText":"超过阈值熔断拦截"},{"id":"UAT-03","passed":false,"title":"无导出权限租户越权拦截","trace":"REQ-02 / AC-1","preconditions":"登录普通访客账号 `guest_user`","steps":"直接通过 URL 访问 `/orders/export` 或伪造请求","expected":"系统正确拦截并返回 4003 无权访问，前端重定向至 403 页面并提示“请联系管理员申请导出权限”。","rawHeaderLine":"- [ ] `[UAT-03]` (溯源: REQ-02 / AC-1) 【无导出权限租户越权拦截】","rawText":"无导出权限租户越权拦截"}];
     let rawMarkdown = "# 📋 任务状态板: 全系统列表页异步导出引擎重构 (.NET 8 + Vue 3) [已全部交付 ✅]\r\n\r\n## 1. 需求溯源清单 (REQ Inventory)\r\n- [x] [REQ-01] MediatR 通用 ExportCommand 管道分发与查询拦截\r\n- [x] [REQ-02] Hangfire 异步后台作业调度与任务生命周期管理 (WebAPI)\r\n- [x] [REQ-03] Redis Pub/Sub 广播中枢与 .NET 8 SSE 流式通知端点\r\n- [x] [REQ-04] C# Stream 分片流式写 Excel 与防 OOM 控制\r\n- [x] [REQ-05] Vue 3 useEventSource 实时监听与 Element-Plus 下载中心抽屉\r\n\r\n## 2. 决策看板 (Living Decisions Board)\r\n- [x] **[DEC-01] 接入架构**: MediatR 管道模式 (ExportCommand 解耦)\r\n- [x] **[DEC-02] 调度引擎**: Hangfire 后台作业 + 纯 WebAPI 暴露\r\n- [x] **[DEC-03] 实时推送**: 分布式 Redis Pub/Sub + .NET 8 原生 SSE 流式端点\r\n\r\n## 3. 核心业务边界铁律 (Invariants & Rules)\r\n- [x] **[RULE-01 权限隔离]**：已通过租户隔离测试\r\n- [x] **[RULE-02 阈值熔断]**：已通过 100 万行熔断测试\r\n- [x] **[RULE-03 失败补偿]**：已通过异常补偿与 SSE 广播测试\r\n- [x] **[RULE-04 敏感脱敏]**：已通过字段脱敏规则测试\r\n\r\n## 4. 🎯 验收标准与质量门禁 (Quality Gates - 全部通过 ✅)\r\n### 1. 自动化单元测试门禁 (.NET 8 & Vue 3)\r\n- [x] 运行 `dotnet test --verbosity quiet`，所有 xUnit/NUnit 测试 100% 绿灯 (15 Passed, 0 Failed, 0 Error)。\r\n- [x] 核心导出管道与 Job 覆盖率 89.2% (>= 80% 达标)。\r\n### 2. 边界反例用例清单 (Boundary Tests)\r\n- [x] `[RULE-01]` 租户数据隔离测试用例通过\r\n- [x] `[RULE-02]` 100万行熔断拦截测试用例通过\r\n- [x] `[RULE-03]` 异常补偿与失败事件推送测试用例通过\r\n### 3. 一键端到端冒烟命令\r\n```bash\r\ndotnet test --filter \"Category=ExportIntegration\"\r\n```\r\n### 4. 人工 UAT 交付验收准则清单 (Human Sign-off Checklist)\r\n- [x] `[UAT-01]` (溯源: REQ-01 / AC-1) 【订单列表异步导出正常流】\r\n  - **前置与数据**：登录 `operator_test` 运营账号，系统存在待发货状态订单\r\n  - **操作步骤**：进入【订单管理 ➔ 列表】➔ 勾选前 2 条 ➔ 点击右上角【批量导出】\r\n  - **PRD预期对照**：1秒内弹出 `\u003cel-message>` 成功提示：“导出任务已提交”；进入【下载中心】状态为“已完成”，下载 Excel 打开无乱码，客户手机号显示为 138****0000 脱敏格式。\r\n- [ ] `[UAT-02]` (溯源: REQ-01 / AC-2) 【超过阈值熔断拦截】\r\n  - **前置与数据**：筛选全量订单（勾选或总数 > 10,000 条）\r\n  - **操作步骤**：点击【批量导出】按钮\r\n  - **PRD预期对照**：前端直接弹出 Warning 提示：“单次导出不得超过 10,000 条”，不触发后端接口，导出按钮不锁定。\r\n- [ ] `[UAT-03]` (溯源: REQ-02 / AC-1) 【无导出权限租户越权拦截】\r\n  - **前置与数据**：登录普通访客账号 `guest_user`\r\n  - **操作步骤**：直接通过 URL 访问 `/orders/export` 或伪造请求\r\n  - **PRD预期对照**：系统正确拦截并返回 4003 无权访问，前端重定向至 403 页面并提示“请联系管理员申请导出权限”。\r\n\r\n## 5. 波次执行计划 (Wave-based Tasks)\r\n### 🌊 Wave 1: 核心后端管道与作业引擎 (.NET 8)\r\n- [x] **Task 1: 实现 MediatR ExportCommand 管道与 Hangfire 作业调度器** `[REQ-01]` `[REQ-02]` `[RULE-01]`\r\n- [x] **Task 2: 实现 Redis Pub/Sub 广播服务与 .NET 8 SSE 流式端点** `[REQ-03]` `[RULE-03]`\r\n\r\n### 🌊 Wave 2: 前端 SSE 监听与下载中心 (Vue 3 + Element Plus)\r\n- [x] **Task 3: 封装 Vue 3 useExportSSE Hook 与 Pinia 全局通知状态** `[REQ-05]`\r\n- [x] **Task 4: 构建 Element Plus 下载中心 Drawer 组件与通用列表导出按钮** `[REQ-05]`\r\n\r\n## 6. 覆盖率自检对账 (Coverage Audit)\r\n- 📊 REQ 提取: 5 项 | Plan 覆盖: 5 项 (100% 0 遗漏，全部通过)\r\n";
     let fileHandle = null;
+    let pendingHandle = null;
+    let pendingOfflineChanges = {};
+    let lastDiskMtime = null;
     let activeFilter = 'all';
 
-    function init() {
-      // 尝试从 localStorage 恢复用户最近修改
+    // ==========================================
+    // 1. IndexedDB 存储适配器 (记忆 FileHandle)
+    // ==========================================
+    const UATStorage = {
+      dbName: 'sansheng_uat_store_v2',
+      storeName: 'handles',
+      handleKey: 'active_file_handle',
+      metaKey: 'active_file_meta',
+
+      async openDB() {
+        return new Promise((resolve, reject) => {
+          if (!window.indexedDB) return reject(new Error('IndexedDB 不受支持'));
+          const req = indexedDB.open(this.dbName, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              db.createObjectStore(this.storeName);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      },
+
+      async saveHandle(handle) {
+        try {
+          const db = await this.openDB();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.storeName, 'readwrite');
+            const store = tx.objectStore(this.storeName);
+            store.put(handle, this.handleKey);
+            store.put({
+              name: handle.name,
+              linkedAt: Date.now(),
+              sourceRelPath: SOURCE_REL_PATH,
+            }, this.metaKey);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+          });
+        } catch (e) {
+          console.warn('存储句柄至 IndexedDB 失败:', e);
+          return false;
+        }
+      },
+
+      async getStoredHandle() {
+        try {
+          const db = await this.openDB();
+          return new Promise((resolve) => {
+            const tx = db.transaction(this.storeName, 'readonly');
+            const store = tx.objectStore(this.storeName);
+            const req = store.get(this.handleKey);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) {
+          return null;
+        }
+      },
+
+      async clearHandle() {
+        try {
+          const db = await this.openDB();
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.objectStore(this.storeName).delete(this.handleKey);
+          tx.objectStore(this.storeName).delete(this.metaKey);
+        } catch (e) {}
+      }
+    };
+
+    // ==========================================
+    // 2. 页面初始化与自动恢复
+    // ==========================================
+    async function init() {
+      // 1. 尝试从 localStorage 恢复用户历史勾选状态作为初始渲染
       const cached = localStorage.getItem('sansheng_uat_states');
       if (cached) {
         try {
@@ -164,14 +296,509 @@
         } catch (e) {}
       }
       render();
+
+      // 2. 如果处于 CLI --serve 微服务模式，通过 HTTP API 自动连接
+      if (IS_SERVE_MODE) {
+        initServeMode();
+        return;
+      }
+
+      // 3. 浏览器原生文件句柄自动恢复尝试
+      await tryRestoreStoredHandle();
     }
 
+    async function initServeMode() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          lastDiskMtime = data.mtime;
+          updateSyncUI('server-connected', data.fileName || SOURCE_FILE_NAME);
+          startServePolling();
+          return;
+        }
+      } catch (e) {}
+      updateSyncUI('server-error');
+    }
+
+    function startServePolling() {
+      setInterval(async () => {
+        try {
+          const res = await fetch('/api/status');
+          if (res.ok) {
+            const data = await res.json();
+            if (lastDiskMtime && data.mtime > lastDiskMtime) {
+              lastDiskMtime = data.mtime;
+              if (data.markdown && data.markdown !== rawMarkdown) {
+                rawMarkdown = data.markdown;
+                items = parseUATBlocksClient(rawMarkdown);
+                render();
+                showToast('⚡ 本地文件已在外部被更新，看板已自动重载对齐');
+              }
+            }
+          }
+        } catch (e) {}
+      }, 2500);
+    }
+
+    async function tryRestoreStoredHandle() {
+      if (!window.showOpenFilePicker && !window.indexedDB) {
+        updateSyncUI('unsupported');
+        return;
+      }
+
+      try {
+        const stored = await UATStorage.getStoredHandle();
+        if (!stored) {
+          updateSyncUI('disconnected');
+          return;
+        }
+
+        // 探测浏览器授权状态
+        const permission = await stored.queryPermission({ mode: 'readwrite' });
+        if (permission === 'granted') {
+          // 自动无感重连成功！
+          fileHandle = stored;
+          await syncAndReconcileWithDisk(fileHandle, false);
+          updateSyncUI('connected', fileHandle.name);
+          showToast('🟢 已自动恢复关联: ' + fileHandle.name + ' 并对齐最新状态');
+        } else {
+          // 浏览器需要手势重新授权 (prompt)
+          pendingHandle = stored;
+          updateSyncUI('prompt', stored.name);
+        }
+      } catch (e) {
+        console.warn('尝试恢复历史文件句柄失败:', e);
+        updateSyncUI('disconnected');
+      }
+    }
+
+    // ==========================================
+    // 3. 核心界面状态切换 (横幅、按钮、状态指示)
+    // ==========================================
+    function updateSyncUI(state, fileName = '') {
+      const banner = document.getElementById('sync-banner');
+      const bannerIcon = document.getElementById('banner-icon');
+      const bannerText = document.getElementById('banner-text');
+      const bannerBtn = document.getElementById('btn-banner-action');
+      const mainBtn = document.getElementById('btn-link-file');
+      const changeBtn = document.getElementById('btn-change-file');
+      const syncStatus = document.getElementById('sync-status');
+      const targetName = fileName || SOURCE_FILE_NAME;
+
+      if (state === 'connected' || state === 'server-connected') {
+        banner.className = 'sync-banner banner-success';
+        bannerIcon.innerText = '🟢';
+        bannerText.innerText = '已实时连接本地磁盘文件: ' + targetName + ' (所有勾选将自动静默双向写回)';
+        bannerBtn.style.display = 'none';
+
+        mainBtn.innerHTML = '🟢 已关联: ' + escapeHtml(targetName);
+        mainBtn.className = '';
+        changeBtn.style.display = 'inline-flex';
+        syncStatus.innerText = '🟢 本地文件自动同步中';
+      } else if (state === 'prompt') {
+        banner.className = 'sync-banner banner-warning';
+        bannerIcon.innerText = '⚡';
+        bannerText.innerText = '检测到上次关联的本地文件: ' + targetName + '。浏览器需您确认一键授权以激活自动保存。';
+        bannerBtn.style.display = 'inline-flex';
+        bannerBtn.className = 'btn-warning btn-sm';
+        bannerBtn.innerText = '⚡ 一键授权恢复';
+
+        mainBtn.innerHTML = '⚡ 点击恢复关联: ' + escapeHtml(targetName);
+        mainBtn.className = 'btn-warning';
+        changeBtn.style.display = 'inline-flex';
+        syncStatus.innerText = '⚡ 等待一键恢复授权';
+      } else if (state === 'unsupported') {
+        banner.className = 'sync-banner banner-danger';
+        bannerIcon.innerText = '⚠️';
+        bannerText.innerText = '当前浏览器不支持 File System Access API，建议使用 Chrome/Edge 浏览器以体验静默保存。';
+        bannerBtn.style.display = 'none';
+        mainBtn.style.display = 'none';
+        syncStatus.innerText = '⚠️ 浏览器不支持文件直连';
+      } else {
+        // disconnected
+        banner.className = 'sync-banner banner-warning';
+        bannerIcon.innerText = '⚠️';
+        bannerText.innerText = '【重要警示】当前尚未关联本地文件（如 ' + targetName + '）！在此页面的勾选不会自动写回磁盘！';
+        bannerBtn.style.display = 'inline-flex';
+        bannerBtn.className = 'btn-warning btn-sm';
+        bannerBtn.innerText = '📁 立即关联文件';
+
+        mainBtn.innerHTML = '📁 关联本地 ' + escapeHtml(targetName) + ' (自动静默保存)';
+        mainBtn.className = 'btn-primary';
+        changeBtn.style.display = 'none';
+        syncStatus.innerText = '🔴 未关联本地文件 (修改未保存至磁盘)';
+      }
+    }
+
+    // ==========================================
+    // 4. 关联、恢复与切换文件操作
+    // ==========================================
+    async function handleBannerAction() {
+      if (pendingHandle) {
+        await reconnectPendingHandle();
+      } else {
+        await linkLocalFile(false);
+      }
+    }
+
+    async function handleMainLinkButtonClick() {
+      if (pendingHandle) {
+        await reconnectPendingHandle();
+      } else if (!fileHandle) {
+        await linkLocalFile(false);
+      } else {
+        showToast('🟢 当前已成功关联 ' + fileHandle.name);
+      }
+    }
+
+    async function reconnectPendingHandle() {
+      if (!pendingHandle) return false;
+      try {
+        const perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          fileHandle = pendingHandle;
+          pendingHandle = null;
+          await syncAndReconcileWithDisk(fileHandle, true);
+          updateSyncUI('connected', fileHandle.name);
+          showToast('🎉 成功恢复关联 ' + fileHandle.name + '！自动静默保存已就绪。');
+          return true;
+        } else {
+          showToast('⚠️ 授权未通过，继续保持未关联状态');
+          return false;
+        }
+      } catch (err) {
+        console.warn('请求文件权限异常:', err);
+        showToast('⚠️ 请求权限失败: ' + err.message);
+        return false;
+      }
+    }
+
+    async function linkLocalFile(forceNew = false) {
+      if (!window.showOpenFilePicker) {
+        alert('当前浏览器环境不支持 File System Access API，请使用 Chrome 或 Edge 浏览器体验自动静默保存。');
+        return false;
+      }
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{
+            description: 'Markdown 任务与测试计划文件',
+            accept: { 'text/markdown': ['.md'] }
+          }]
+        });
+
+        fileHandle = handle;
+        pendingHandle = null;
+        await UATStorage.saveHandle(handle);
+        await syncAndReconcileWithDisk(fileHandle, true);
+        updateSyncUI('connected', handle.name);
+        showToast('🎉 成功关联本地文件: ' + handle.name + '！后续勾选将实时静默写入。');
+        return true;
+      } catch (e) {
+        // 用户取消选择
+        return false;
+      }
+    }
+
+    // ==========================================
+    // 5. 双向对齐算法 (Reconciliation)
+    // ==========================================
+    async function syncAndReconcileWithDisk(handle, userTriggered = false) {
+      try {
+        const file = await handle.getFile();
+        lastDiskMtime = file.lastModified;
+        const diskText = await file.text();
+
+        let mergedText = diskText || '';
+        const pendingIds = Object.keys(pendingOfflineChanges);
+
+        // 如果在断开或未授权期间有离线打勾变动，增量叠加合并回本地文件
+        if (pendingIds.length > 0 && mergedText) {
+          pendingIds.forEach(id => {
+            const passed = pendingOfflineChanges[id];
+            const idRegex = new RegExp('(-\\s*\\[)[ xX](\\]\\s*.*?\\[?' + escapeRegex(id) + '\\]?)', 'i');
+            const replacement = passed ? '$1x$2' : '$1 $2';
+            mergedText = mergedText.replace(idRegex, replacement);
+          });
+
+          // 写回磁盘
+          const writable = await handle.createWritable();
+          await writable.write(mergedText);
+          await writable.close();
+          pendingOfflineChanges = {};
+          showToast('🔄 已将离线勾选变更成功合并写回本地文件: ' + handle.name);
+        }
+
+        if (mergedText) {
+          rawMarkdown = mergedText;
+          items = parseUATBlocksClient(rawMarkdown);
+        }
+
+        render();
+      } catch (e) {
+        console.error('双向对齐本地文件失败:', e);
+        showToast('⚠️ 读取本地文件失败: ' + e.message);
+      }
+    }
+
+    // 窗口切回时热检测本地文件变动
+    window.addEventListener('focus', async () => {
+      if (fileHandle) {
+        try {
+          const file = await fileHandle.getFile();
+          if (lastDiskMtime && file.lastModified > lastDiskMtime) {
+            lastDiskMtime = file.lastModified;
+            const diskText = await file.text();
+            if (diskText && diskText !== rawMarkdown) {
+              const reloadBtn = document.getElementById('btn-reload-md');
+              if (reloadBtn) {
+                reloadBtn.classList.add('btn-warning');
+                reloadBtn.innerText = '⚡ 发现 MD 外部修改 (点击重载)';
+              }
+              rawMarkdown = diskText;
+              items = parseUATBlocksClient(rawMarkdown);
+              render();
+              showToast('⚡ 检测到本地文件在外部被更新，看板已自动同步刷新');
+            }
+          }
+        } catch (e) {}
+      }
+    });
+
+    // ==========================================
+    // 6. 从本地 MD 重载更新 HTML 看板 (Pull from MD)
+    // ==========================================
+    async function reloadFromLocalMarkdown() {
+      const reloadBtn = document.getElementById('btn-reload-md');
+      if (reloadBtn) {
+        reloadBtn.classList.remove('btn-warning');
+        reloadBtn.innerText = '📥 从本地 MD 重载更新';
+      }
+
+      // 1. 如果处于 CLI --serve 服务模式
+      if (IS_SERVE_MODE) {
+        try {
+          const res = await fetch('/api/status');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.markdown) {
+              rawMarkdown = data.markdown;
+              items = parseUATBlocksClient(rawMarkdown);
+              lastDiskMtime = data.mtime;
+              render();
+              showToast('🎉 已成功从本地服务重新加载最新 ' + (data.fileName || SOURCE_FILE_NAME) + '！');
+              return;
+            }
+          }
+        } catch (e) {
+          showToast('⚠️ 从本地服务获取最新内容失败: ' + e.message);
+          return;
+        }
+      }
+
+      // 2. 存在 pendingHandle（已记忆但未授权）
+      if (!fileHandle && pendingHandle) {
+        const restored = await reconnectPendingHandle();
+        if (restored && fileHandle) {
+          await loadTextFromFileHandle(fileHandle);
+        }
+        return;
+      }
+
+      // 3. 正常已关联模式
+      if (fileHandle) {
+        await loadTextFromFileHandle(fileHandle);
+        return;
+      }
+
+      // 4. 未关联文件 -> 提示引导选择本地文件并载入
+      const willLink = confirm(
+        '当前尚未关联本地文件（如 ' + SOURCE_FILE_NAME + '）！\n\n' +
+        '是否立即选择本地文件以载入最新内容更新本看板？'
+      );
+      if (willLink) {
+        const linked = await linkLocalFile(false);
+        if (linked && fileHandle) {
+          await loadTextFromFileHandle(fileHandle);
+        }
+      }
+    }
+
+    async function loadTextFromFileHandle(handle) {
+      try {
+        const file = await handle.getFile();
+        lastDiskMtime = file.lastModified;
+        const text = await file.text();
+        if (!text || !text.trim()) {
+          showToast('⚠️ 本地文件内容为空');
+          return;
+        }
+        rawMarkdown = text;
+        items = parseUATBlocksClient(rawMarkdown);
+        render();
+        updateSyncUI('connected', handle.name);
+        showToast('🎉 成功从本地 ' + handle.name + ' 重载最新内容并更新看板！');
+      } catch (err) {
+        console.error('重载本地文件失败:', err);
+        showToast('⚠️ 读取本地文件失败: ' + err.message);
+      }
+    }
+
+    // ==========================================
+    // 7. 立即强制将当前看板状态同步写回 MD (Push to MD)
+    // ==========================================
+    async function forceSyncToLocalMarkdown() {
+      // 1. 服务模式
+      if (IS_SERVE_MODE) {
+        try {
+          const res = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markdown: rawMarkdown })
+          });
+          if (res.ok) {
+            showToast('✅ 成功将当前全部验收状态同步保存至本地文件！');
+          } else {
+            showToast('⚠️ 本地服务保存失败: ' + res.statusText);
+          }
+        } catch (e) {
+          showToast('⚠️ 连接本地服务失败: ' + e.message);
+        }
+        return;
+      }
+
+      // 2. 待授权模式
+      if (!fileHandle && pendingHandle) {
+        const restored = await reconnectPendingHandle();
+        if (!restored) return;
+      }
+
+      // 3. 已关联文件
+      if (fileHandle) {
+        try {
+          const writable = await fileHandle.createWritable();
+          await writable.write(rawMarkdown);
+          await writable.close();
+          showToast('✅ 成功将当前看板全部状态 100% 写入保存至本地 ' + fileHandle.name + '！');
+        } catch (err) {
+          showToast('⚠️ 写入本地文件失败: ' + err.message);
+        }
+        return;
+      }
+
+      // 4. 未关联本地文件 -> 引导用户选择并保存
+      const willLink = confirm(
+        '当前尚未关联本地文件（如 ' + SOURCE_FILE_NAME + '）！\n\n' +
+        '是否立即选择本地文件以将当前看板状态写入保存？'
+      );
+      if (willLink) {
+        const linked = await linkLocalFile(false);
+        if (linked && fileHandle) {
+          try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(rawMarkdown);
+            await writable.close();
+            showToast('✅ 成功将看板状态写入保存至本地 ' + fileHandle.name + '！');
+          } catch (e) {
+            showToast('⚠️ 写入失败: ' + e.message);
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // 8. 核心勾选逻辑与防脱节拦截
+    // ==========================================
+    async function toggleUAT(id, isChecked) {
+      const target = items.find(i => i.id === id);
+      if (!target) return;
+
+      // 场景 A: 存在上次记忆的句柄但需要用户手势授权 (prompt)
+      // 用户点击 Checkbox 本身就是合法的 User Gesture，立即借力唤起授权！
+      if (!fileHandle && pendingHandle) {
+        const restored = await reconnectPendingHandle();
+        if (!restored) {
+          // 授权失败或用户取消，记录为离线变更
+          pendingOfflineChanges[id] = isChecked;
+          target.passed = isChecked;
+          render();
+          return;
+        }
+      }
+
+      // 场景 B: 完全未关联本地文件且非服务模式 -> 强拦截告警弹窗防脱节
+      if (!fileHandle && !IS_SERVE_MODE) {
+        pendingOfflineChanges[id] = isChecked;
+        target.passed = isChecked;
+        render();
+
+        const willLink = confirm(
+          '⚠️ 【防脱节重要提示】\n\n' +
+          '当前网页尚未关联本地文件（如 ' + SOURCE_FILE_NAME + '）！\n' +
+          '您刚才的勾选仅保存在浏览器临时缓存中，【不会自动写回磁盘文件】！\n' +
+          '如果直接关闭页面或在代码中运行测试，状态将出现不同步。\n\n' +
+          '是否立即选择本地 ' + SOURCE_FILE_NAME + ' 建立自动保存关联？'
+        );
+
+        if (willLink) {
+          await linkLocalFile(false);
+        } else {
+          showToast('⚠️ 状态仅暂存浏览器，请务必关联本地文件以防状态丢失');
+        }
+        return;
+      }
+
+      // 场景 C: 正常已连接状态
+      target.passed = isChecked;
+
+      // 更新内存中的 rawMarkdown
+      if (target.rawHeaderLine) {
+        const replacement = isChecked
+          ? target.rawHeaderLine.replace(/-\s*\[\s*\]/, '- [x]')
+          : target.rawHeaderLine.replace(/-\s*\[[xX]\]/, '- [ ]');
+        rawMarkdown = rawMarkdown.replace(target.rawHeaderLine, replacement);
+        target.rawHeaderLine = replacement;
+      }
+
+      // 持久化回写
+      if (IS_SERVE_MODE) {
+        try {
+          const res = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markdown: rawMarkdown, uatId: id, passed: isChecked })
+          });
+          if (res.ok) {
+            showToast(`✅ 已更新 [${id}] 并已自动同步至本地 ${SOURCE_FILE_NAME}！`);
+          } else {
+            showToast(`⚠️ 本地服务写入失败: ${res.statusText}`);
+          }
+        } catch (e) {
+          showToast(`⚠️ 本地服务连接失败: ${e.message}`);
+        }
+      } else if (fileHandle) {
+        try {
+          const writable = await fileHandle.createWritable();
+          await writable.write(rawMarkdown);
+          await writable.close();
+          showToast(`✅ 已更新 [${id}] 并已自动保存至本地 ${escapeHtml(fileHandle.name)}！`);
+        } catch (err) {
+          showToast(`⚠️ 保存至本地文件失败: ${err.message}`);
+        }
+      }
+
+      render();
+    }
+
+    // ==========================================
+    // 7. 渲染函数与辅助操作
+    // ==========================================
     function render() {
       const listEl = document.getElementById('uat-list');
       listEl.innerHTML = '';
 
       let passedCount = 0;
-      items.forEach((item, index) => {
+      items.forEach((item) => {
         if (item.passed) passedCount++;
 
         const isVisible = activeFilter === 'all' || (activeFilter === 'passed' && item.passed) || (activeFilter === 'pending' && !item.passed);
@@ -240,54 +867,72 @@
       localStorage.setItem('sansheng_uat_states', JSON.stringify(stateMap));
     }
 
-    async function toggleUAT(id, isChecked) {
-      const target = items.find(i => i.id === id);
-      if (!target) return;
-      target.passed = isChecked;
+    function parseUATBlocksClient(content) {
+      const lines = (content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const parsedItems = [];
+      let current = null;
 
-      // 实时更新当前内存中的 Markdown
-      if (target.rawHeaderLine) {
-        const replacement = isChecked
-          ? target.rawHeaderLine.replace(/-\s*\[\s*\]/, '- [x]')
-          : target.rawHeaderLine.replace(/-\s*\[[xX]\]/, '- [ ]');
-        rawMarkdown = rawMarkdown.replace(target.rawHeaderLine, replacement);
-        target.rawHeaderLine = replacement;
-      }
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^(\s*-\s*\[([ xX])\])\s*`?\[?(UAT-\d+)\]?`?(.*)$/i);
 
-      // 若关联了本地文件，自动静默写回磁盘
-      if (fileHandle) {
-        try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(rawMarkdown);
-          await writable.close();
-          showToast(`✅ 已更新 [${id}] 并已自动保存至本地 TASK.md！`);
-        } catch (err) {
-          showToast(`⚠️ 保存至本地文件失败: ${err.message}`);
+        if (match) {
+          if (current) parsedItems.push(finalizeClientItem(current));
+          current = {
+            rawHeaderLine: line,
+            passed: match[2].toLowerCase() === 'x',
+            id: match[3].toUpperCase(),
+            headerRest: match[4].trim(),
+            detailLines: [],
+          };
+        } else if (current) {
+          if (/^\s*-\s*\[\s*[ xX]?\s*\]/.test(line) || line.trim().startsWith('### ') || line.trim().startsWith('## ')) {
+            parsedItems.push(finalizeClientItem(current));
+            current = null;
+          } else {
+            current.detailLines.push(line);
+          }
         }
-      } else {
-        showToast(`✅ 已记录 [${id}] 状态 (点击上方关联本地文件可自动同步)`);
       }
-
-      render();
+      if (current) parsedItems.push(finalizeClientItem(current));
+      return parsedItems;
     }
 
-    async function linkLocalFile() {
-      if (!window.showOpenFilePicker) {
-        alert('当前浏览器环境不支持 File System Access API，请使用 Chrome 或 Edge 浏览器体验自动静默保存。');
-        return;
+    function finalizeClientItem(current) {
+      let title = current.headerRest;
+      let trace = '';
+      const traceMatch = title.match(/\((?:溯源|关联|对应)[:：]?\s*([^)]+)\)/i);
+      if (traceMatch) {
+        trace = traceMatch[1].trim();
+        title = title.replace(traceMatch[0], '').trim();
       }
-      try {
-        const [handle] = await window.showOpenFilePicker({
-          types: [{ description: 'Markdown Task File', accept: { 'text/markdown': ['.md'] } }]
-        });
-        fileHandle = handle;
-        document.getElementById('btn-link-file').innerHTML = '🟢 已关联: ' + escapeHtml(handle.name) + ' (自动静默保存)';
-        document.getElementById('btn-link-file').classList.remove('btn-primary');
-        document.getElementById('sync-status').innerText = '🟢 已连接本地磁盘自动保存';
-        showToast('🎉 成功关联本地文件！现在在网页勾选将自动实时同步写入。');
-      } catch (e) {
-        // 用户取消选择
-      }
+      title = title.replace(/^[【\[](.*?)[】\]]$/, '$1').trim();
+      if (!title) title = '用例 ' + current.id;
+
+      let preconditions = '';
+      let steps = '';
+      let expected = '';
+      current.detailLines.forEach(l => {
+        const trimmed = l.trim().replace(/^[-*]\s*/, '');
+        if (/前置(?:条件)?(?:与数据)?/i.test(trimmed)) {
+          preconditions = trimmed.replace(/^.*?(?:前置(?:条件)?(?:与数据)?)[:：* ]*/i, '').trim();
+        } else if (/操作步骤|步骤/i.test(trimmed)) {
+          steps = trimmed.replace(/^.*?(?:操作步骤|步骤)[:：* ]*/i, '').trim();
+        } else if (/PRD预期(?:对照)?|预期(?:对照|结果)?/i.test(trimmed)) {
+          expected = trimmed.replace(/^.*?(?:PRD预期(?:对照)?|预期(?:对照|结果)?)[:：* ]*/i, '').trim();
+        }
+      });
+
+      return {
+        id: current.id,
+        passed: current.passed,
+        title,
+        trace,
+        preconditions,
+        steps,
+        expected,
+        rawHeaderLine: current.rawHeaderLine
+      };
     }
 
     function copyLatestMarkdown() {
@@ -302,10 +947,10 @@
       const blob = new Blob([rawMarkdown], { type: 'text/markdown;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'TASK.md';
+      a.download = fileHandle ? fileHandle.name : SOURCE_FILE_NAME;
       a.click();
       URL.revokeObjectURL(a.href);
-      showToast('💾 已下载最新 TASK.md');
+      showToast('💾 已下载最新文件: ' + a.download);
     }
 
     function filterItems(type, btnEl) {
@@ -333,12 +978,16 @@
       const toast = document.getElementById('toast');
       toast.innerText = msg;
       toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+      setTimeout(() => { toast.style.display = 'none'; }, 3200);
     }
 
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     init();

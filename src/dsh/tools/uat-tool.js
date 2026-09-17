@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { defineTool } from '../compat.js';
 import { YongleBridge } from '../../tools/yongle-bridge.js';
+import { findActiveTaskOrPlanPath } from '../../core/uat-html-compiler.js';
 
 export function createUatGateTool(config) {
   return defineTool({
@@ -25,6 +26,11 @@ export function createUatGateTool(config) {
         required: false,
         description: '缺陷描述或验收反馈备注',
       },
+      taskPath: {
+        type: 'string',
+        required: false,
+        description: '自定义任务或测试计划路径 (如 test-plan.md)',
+      },
     },
     output: {
       schema: {
@@ -45,12 +51,10 @@ export function createUatGateTool(config) {
     },
     async execute(args) {
       const cwd = process.cwd();
-      const sanshengTask = path.join(cwd, '.sansheng', 'TASK.md');
-      const rootTask = path.join(cwd, 'TASK.md');
-      const taskPath = fs.existsSync(sanshengTask) ? sanshengTask : (fs.existsSync(rootTask) ? rootTask : null);
+      const taskPath = findActiveTaskOrPlanPath(cwd, args.taskPath);
 
       if (!taskPath) {
-        return { success: false, message: '未找到活跃 TASK.md', remainingUatCount: 0, allPassed: false };
+        return { success: false, message: '未找到活跃 TASK.md 或 test-plan.md', remainingUatCount: 0, allPassed: false };
       }
 
       let content = fs.readFileSync(taskPath, 'utf-8');
