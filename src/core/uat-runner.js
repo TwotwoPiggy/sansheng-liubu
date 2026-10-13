@@ -204,13 +204,22 @@ function finalizeParsedItem(current) {
 /**
  * 将 TASK.md 中的 UAT 未完成行原地更新为已完成状态
  */
-export function markUATItemPassed(taskPath, rawHeaderLine) {
+export function markUATItemPassed(taskPath, rawHeaderLine, options = {}) {
   if (!fs.existsSync(taskPath)) return;
   try {
     const fileContent = fs.readFileSync(taskPath, 'utf-8');
     const checkedLine = rawHeaderLine.replace(/-\s*\[\s*\]/, '- [x]');
     const updated = fileContent.replace(rawHeaderLine, checkedLine);
     fs.writeFileSync(taskPath, updated, 'utf-8');
+
+    // 若当前修改的是分片任务文件，自动异步刷新主看板 .sansheng/TASK.md
+    const cwd = options.cwd || process.cwd();
+    const tasksDir = path.join(cwd, '.sansheng', 'tasks');
+    if (fs.existsSync(tasksDir)) {
+      import('./shangshu.js').then(({ Shangshu }) => {
+        new Shangshu(cwd).syncTaskIndex();
+      }).catch(() => {});
+    }
   } catch (e) {
     console.warn(`⚠️ [UAT Runner] 回写 TASK.md 状态失败:`, e.message);
   }

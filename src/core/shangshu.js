@@ -1,10 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { YongleBridge } from '../tools/yongle-bridge.js';
+import { parseUATBlocks } from './uat-runner.js';
 
 /**
  * 尚书省 (Shangshu) - 掌管执行与状态统领 (RUN 与归档阶段)
- * 职责: TASK.md 滑动窗口限制 (<150行)、分片轮转、两级归档
+ * 职责:
+ * 1. 任务分片池管理 (Tasks Sharding: .sansheng/tasks/*.md)
+ * 2. 活跃指针与 TASK.md 滑动窗口限制 (<150行)
+ * 3. 分片轮转、多任务切换与两级归档
  */
 
 export class Shangshu {
@@ -24,8 +28,399 @@ export class Shangshu {
 
     this.archiveDir = path.join(sanshengDir, 'archive');
     this.sanshengDir = sanshengDir;
+    this.tasksDir = path.join(sanshengDir, 'tasks');
+    this.activeTaskPointerPath = path.join(sanshengDir, '.active_task');
     this.yongle = new YongleBridge();
   }
+
+  // ==========================================
+  // 1. 任务分片池架构 (Tasks Sharding)
+  // ==========================================
+
+  /**
+   * 判断当前工作区是否处于任务分片模式
+   * 当 .sansheng/tasks 目录存在且包含分片 Markdown 文件时为分片模式
+   */
+  isShardedMode() {
+    if (!fs.existsSync(this.tasksDir)) return false;
+    try {
+      const files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.md') && !f.startsWith('.'));
+      return files.length > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /**
+   * 确保分片目录 .sansheng/tasks 存在
+   */
+  ensureTasksDir() {
+    if (!fs.existsSync(this.tasksDir)) {
+      fs.mkdirSync(this.tasksDir, { recursive: true });
+    }
+    return this.tasksDir;
+  }
+
+  /**
+   * 获取当前活跃 Task ID
+   */
+  getActiveTaskId() {
+    if (fs.existsSync(this.activeTaskPointerPath)) {
+      try {
+        const id = fs.readFileSync(this.activeTaskPointerPath, 'utf-8').trim();
+        if (id) return id;
+      } catch (_) {}
+    }
+
+    // 若无显式指针，扫描分片，自动返回第一个未完成的任务
+    const tasks = this.listTasks();
+    const pending = tasks.find(t => !t.completed);
+    if (pending) return pending.id;
+
+    return tasks[0]?.id || null;
+  }
+
+  /**
+   * 切换当前活跃 Task ID 并联动更新看板
+   */
+  setActiveTask(taskId) {
+    if (!taskId) return null;
+    const cleanId = String(taskId).trim().replace(/^\[|\]$/g, '');
+    this.ensureTasksDir();
+    fs.writeFileSync(this.activeTaskPointerPath, cleanId, 'utf-8');
+    this.syncTaskIndex();
+    return cleanId;
+  }
+
+  /**
+   * 根据 Task ID 检索对应分片文件路径（支持前缀匹配与模糊匹配）
+   * @param {string} taskId 任务编号，如 "TASK-01" 或 "TASK-01-order-export"
+   * @returns {string|null}
+   */
+  getTaskPath(taskId) {
+    if (!taskId || !fs.existsSync(this.tasksDir)) return null;
+    const cleanId = String(taskId).trim().replace(/^\[|\]$/g, '');
+
+    const files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.md') && !f.startsWith('.'));
+    // 1. 精确匹配文件名（不带扩展名或带扩展名）
+    let match = files.find(f => f === `${cleanId}.md` || f === cleanId);
+    if (match) return path.join(this.tasksDir, match);
+
+    // 2. 前缀匹配（如 taskId 为 TASK-01，文件名为 TASK-01-order-export.md）
+    match = files.find(f => {
+      const base = f.replace(/\.md$/i, '');
+      return base.toLowerCase() === cleanId.toLowerCase() ||
+        base.toLowerCase().startsWith(`${cleanId.toLowerCase()}-`) ||
+        base.toLowerCase().startsWith(`${cleanId.toLowerCase()}_`);
+    });
+    if (match) return path.join(this.tasksDir, match);
+
+    // 3. 包含匹配
+    match = files.find(f => f.toLowerCase().includes(cleanId.toLowerCase()));
+    if (match) return path.join(this.tasksDir, match);
+
+    return null;
+  }
+
+  /**
+   * 列出所有分片任务
+   * @returns {Array<object>}
+   */
+  listTasks() {
+    if (!fs.existsSync(this.tasksDir)) return [];
+    let files = [];
+    try {
+      files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.md') && !f.startsWith('.')).sort();
+    } catch (_) {
+      return [];
+    }
+
+    let activeId = null;
+    if (fs.existsSync(this.activeTaskPointerPath)) {
+      try {
+        activeId = fs.readFileSync(this.activeTaskPointerPath, 'utf-8').trim();
+      } catch (_) {}
+    }
+
+    const tasks = files.map(file => {
+      const fullPath = path.join(this.tasksDir, file);
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      return this.parseTaskContent(content, fullPath, file, activeId);
+    });
+
+    // 若无显式 activeId，默认以第一个未完成任务为活跃
+    if (!activeId) {
+      const firstPending = tasks.find(t => !t.completed);
+      if (firstPending) {
+        firstPending.isActive = true;
+      } else if (tasks.length > 0) {
+        tasks[0].isActive = true;
+      }
+    }
+
+    return tasks;
+  }
+
+  /**
+   * 解析单个分片 Markdown 内容
+   */
+  parseTaskContent(content, fullPath, filename, activeId = null) {
+    const lines = (content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const firstLine = lines.find(l => l.trim().startsWith('#')) || lines[0] || '';
+    
+    // 提取 ID，优先匹配形如 [TASK-01] 或从文件名提取
+    let id = '';
+    const idMatch = firstLine.match(/\[?(TASK-[\w.-]+)\]?/i) || filename.match(/^(TASK-[\w.-]+?)(?:[-_.]|$)/i);
+    if (idMatch) {
+      id = idMatch[1].toUpperCase();
+    } else {
+      id = filename.replace(/\.md$/i, '').toUpperCase();
+    }
+
+    // 提取标题 (去除前导 Markdown 标记、Emoji 与 [TASK-xx] 标签)
+    let title = firstLine
+      .replace(/^#+\s*/, '')
+      .replace(/^[🎯📋⚠️🚀🔧📦✨\s]+/, '')
+      .replace(/\[?TASK-[\w.-]+\]?[:\s-]*/i, '')
+      .trim();
+    if (!title) {
+      title = filename.replace(/\.md$/i, '');
+    }
+
+    // 提取关联的 [REQ-xx]
+    const reqMatches = content.match(/REQ-\d+/gi) || [];
+    const boundReqs = [...new Set(reqMatches.map(r => r.toUpperCase()))];
+
+    // 提取关联的 [RULE-xx]
+    const ruleMatches = content.match(/RULE-\d+/gi) || [];
+    const boundRules = [...new Set(ruleMatches.map(r => r.toUpperCase()))];
+
+    // 提取 UAT 验收项
+    const uats = parseUATBlocks(content);
+    const completedUats = uats.filter(u => u.passed).length;
+
+    // 判定任务完成状态
+    // 规则：若有 UAT 项，则所有 UAT 通过才算完成；若无 UAT 项，检查是否包含未完成勾选框 - [ ]
+    let completed = false;
+    if (uats.length > 0) {
+      completed = completedUats === uats.length;
+    } else {
+      const hasUnchecked = lines.some(l => /^\s*-\s*\[\s*\]/.test(l));
+      const hasChecked = lines.some(l => /^\s*-\s*\[[xX]\]/.test(l));
+      completed = hasChecked && !hasUnchecked;
+    }
+
+    const isActive = activeId ? (id.toLowerCase() === activeId.toLowerCase() || filename.toLowerCase().includes(activeId.toLowerCase())) : false;
+
+    return {
+      id,
+      title,
+      filename,
+      filePath: fullPath,
+      completed,
+      isActive,
+      boundReqs,
+      boundRules,
+      uats,
+      totalUats: uats.length,
+      completedUats,
+    };
+  }
+
+  /**
+   * 创建新的独立任务分片 (Task Shard)
+   * @param {object} taskDef 任务定义
+   * @param {object} [options] 选项
+   * @returns {string} 生成的文件路径
+   */
+  createTaskSlice(taskDef = {}, options = {}) {
+    this.ensureTasksDir();
+    const id = (taskDef.id || `TASK-${String(this.listTasks().length + 1).padStart(2, '0')}`).toUpperCase();
+    const title = taskDef.title || '新研发任务';
+    const cleanSlug = title.replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+    const fileName = `${id}${cleanSlug ? '-' + cleanSlug : ''}.md`;
+    const destPath = path.join(this.tasksDir, fileName);
+
+    const boundReqs = Array.isArray(taskDef.boundReqs) ? taskDef.boundReqs : [];
+    const boundRules = Array.isArray(taskDef.rules) ? taskDef.rules : (Array.isArray(options.rules) ? options.rules : []);
+    const reqDetails = options.reqs || [];
+
+    // 构建需求章节
+    let reqSection = '';
+    if (boundReqs.length > 0) {
+      reqSection = boundReqs.map(r => {
+        const found = reqDetails.find(d => (d.id || '').toUpperCase() === r.toUpperCase());
+        if (found) {
+          const acs = (found.acs || []).map((ac, idx) => `  - **AC-${idx + 1}**: ${ac}`).join('\n');
+          return `- **[${found.id} ${found.title || ''}]**\n${acs || '  - 满足既定业务预期'}`;
+        }
+        return `- **[${r}]** 对应 PRD 细节约定`;
+      }).join('\n');
+    } else {
+      reqSection = `> ⚠️ *[门下省警告] 当前任务未显式绑定 [REQ-xx]，开发时请严格防漏！*`;
+    }
+
+    // 构建规则章节
+    let ruleSection = '';
+    if (boundRules.length > 0) {
+      ruleSection = boundRules.map((r, i) => {
+        const rId = typeof r === 'string' ? r : (r.id || `RULE-${String(i + 1).padStart(2, '0')}`);
+        const rContent = typeof r === 'string' ? r : (r.content || r.text || '遵守既定边界契约');
+        return `- **[${rId}]** ${rContent}`;
+      }).join('\n');
+    } else {
+      ruleSection = `- **[RULE-01]** 严禁破坏现有业务单测，外部输入必须执行严格防御校验。`;
+    }
+
+    // 构建质量门禁与 UAT
+    let uatSection = '';
+    if (Array.isArray(taskDef.uats) && taskDef.uats.length > 0) {
+      uatSection = taskDef.uats.map(u => {
+        if (typeof u === 'string') return `- [ ] ${u}`;
+        return `- [ ] \`[${u.id || 'UAT-01'}]\` (溯源: ${u.trace || boundReqs[0] || 'REQ-01'}) 【${u.title || title}】\n  - **前置与数据**：${u.preconditions || '准备对应业务数据'}\n  - **操作步骤**：${u.steps || '触发业务执行'}\n  - **PRD预期对照**：${u.expected || '给出合规业务反馈'}`;
+      }).join('\n');
+    } else {
+      uatSection = `- [ ] \`[UAT-01]\` (溯源: ${boundReqs[0] || 'REQ-01'} / AC-1) 【${title} 正常业务流验收】
+  - **前置与数据**：具备业务权限的测试环境
+  - **操作步骤**：1. 进入对应功能；2. 触发提交操作
+  - **PRD预期对照**：界面给出预期成功反馈，数据正常持久化
+- [ ] \`[UAT-02]\` (溯源: ${boundReqs[0] || 'REQ-01'} / AC-2) 【${title} 边界与异常拦截】
+  - **前置与数据**：输入非法或超限参数
+  - **操作步骤**：触发提交操作
+  - **PRD预期对照**：系统正确拦截并给出友好错误提示，杜绝越界`;
+    }
+
+    const testCmd = taskDef.testCommand || 'dotnet test';
+
+    const content = `# 🎯 [${id}] ${title}
+
+* **状态**: [ ] 待执行
+* **负责人**: 兵部工兵 (Worker Subagent)
+* **关联需求**: ${boundReqs.length > 0 ? boundReqs.map(r => `\`[${r}]\``).join(', ') : '无'}
+
+---
+
+## 📋 绑定的原子需求细节 (已切片隔离)
+${reqSection}
+
+---
+
+## ⚠️ 适用业务边界与铁律契约
+${ruleSection}
+
+---
+
+## 🎯 专属质量门禁与验收清单 (Quality Gates)
+
+### 1. 自动化单元测试门禁
+- [ ] 运行 \`${testCmd}\`，所有相关单测 100% 绿灯通过。
+
+### 2. 人工 UAT 交付验收准则清单
+${uatSection}
+`;
+
+    fs.writeFileSync(destPath, content, 'utf-8');
+
+    // 默认若尚无活跃指针，则设为当前新任务
+    if (!fs.existsSync(this.activeTaskPointerPath)) {
+      fs.writeFileSync(this.activeTaskPointerPath, id, 'utf-8');
+    }
+
+    // 同步刷新主看板 TASK.md
+    this.syncTaskIndex();
+
+    return destPath;
+  }
+
+  /**
+   * 汇总所有分片状态，刷新生成主看板 .sansheng/TASK.md (保证 < 150 行)
+   */
+  syncTaskIndex() {
+    if (!this.isShardedMode()) return;
+    const tasks = this.listTasks();
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const activeTask = tasks.find(t => t.isActive) || tasks.find(t => !t.completed) || tasks[0];
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 100;
+
+    const taskLines = tasks.map(t => {
+      const mark = t.completed ? 'x' : ' ';
+      const tag = t.isActive ? ' 🔥 `[当前活跃]`' : (t.completed ? ' ✅' : ' ⏳');
+      const reqStr = t.boundReqs.length > 0 ? ` (溯源: ${t.boundReqs.join(', ')})` : '';
+      return `- [${mark}] \`[${t.id}]\` ${t.title}${reqStr}${tag}`;
+    }).join('\n');
+
+    let activeSliceOverview = '> 暂无活跃任务切片';
+    if (activeTask) {
+      activeSliceOverview = `### 🎯 当前活跃任务切片: \`[${activeTask.id}] ${activeTask.title}\`
+* **分片文件**: \`.sansheng/tasks/${activeTask.filename}\`
+* **需求溯源**: ${activeTask.boundReqs.length > 0 ? activeTask.boundReqs.map(r => `\`[${r}]\``).join(', ') : '通用'}
+* **验收进度**: UAT 通过 ${activeTask.completedUats}/${activeTask.totalUats} 项 (${activeTask.completed ? '已达成 ✅' : '进行中 🔥'})`;
+    }
+
+    const rawBoard = `# 🏛️ 三省六部活跃任务看板 (Active Tasks HUD)
+
+> 📊 **整体进度**: ${completed} / ${total} 完成 (${percent}%) | 当前活跃: \`${activeTask ? activeTask.id : '无'}\`  
+> 📁 **分片存储**: \`.sansheng/tasks/*.md\` (多任务物理隔离，杜绝覆盖冲突)
+
+## 📋 任务分片总览 (Task Shards Index)
+${taskLines || '- 暂无任务分片'}
+
+---
+
+${activeSliceOverview}
+
+---
+> 💡 *[尚书省指令]* 输入 \`s\` 单步执行当前任务；输入 \`c\` 批量推进；输入 \`archive\` 触发结项归档。
+`;
+
+    // 实施滑动窗口检查（保证永不超 150 行）
+    const finalBoard = this.enforceSlidingWindow(rawBoard, 150);
+
+    // 写入 .sansheng/TASK.md
+    if (!fs.existsSync(this.sanshengDir)) {
+      fs.mkdirSync(this.sanshengDir, { recursive: true });
+    }
+    const targetPath = path.join(this.sanshengDir, 'TASK.md');
+    fs.writeFileSync(targetPath, finalBoard, 'utf-8');
+    this.taskPath = targetPath;
+  }
+
+  /**
+   * 归档单个任务分片
+   */
+  archiveTask(taskId) {
+    const taskPath = this.getTaskPath(taskId);
+    if (!taskPath || !fs.existsSync(taskPath)) return false;
+
+    const taskArchiveDir = path.join(this.archiveDir, 'tasks');
+    if (!fs.existsSync(taskArchiveDir)) {
+      fs.mkdirSync(taskArchiveDir, { recursive: true });
+    }
+
+    const fileName = path.basename(taskPath);
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const dest = path.join(taskArchiveDir, `${timestamp}-${fileName}`);
+
+    fs.copyFileSync(taskPath, dest);
+    try { fs.unlinkSync(taskPath); } catch (_) {}
+
+    // 若归档的是当前活跃任务，清除指针
+    if (fs.existsSync(this.activeTaskPointerPath)) {
+      const active = fs.readFileSync(this.activeTaskPointerPath, 'utf-8').trim();
+      if (active.toLowerCase() === taskId.toLowerCase()) {
+        try { fs.unlinkSync(this.activeTaskPointerPath); } catch (_) {}
+      }
+    }
+
+    this.syncTaskIndex();
+    console.log(`📁 [尚书省归档] 任务分片 [${taskId}] 已归档至: ${path.relative(this.cwd, dest)}`);
+    return true;
+  }
+
+  // ==========================================
+  // 2. 原有向后兼容方法保持与升级
+  // ==========================================
 
   /**
    * 检查并确保 TASK.md 严格处于滑动窗口限制以内 (< 150 行)
@@ -112,7 +507,7 @@ export class Shangshu {
    * 清理临时文件与缓存，确保代码仓库 100% 纯净 (SPEC §3)
    */
   cleanTemporaryFiles() {
-    const tempFiles = ['codebase_map.md'];
+    const tempFiles = ['codebase_map.md', '.active_task'];
     const tempDirs = ['cache'];
     let cleaned = 0;
 
@@ -143,15 +538,33 @@ export class Shangshu {
 
   /**
    * 项目结项全量归档 (Milestone Close) (SPEC §3 完整实现)
-   * 1. 归档 TASK.md → archive/
-   * 2. 删除活跃 TASK.md
+   * 1. 归档当前 TASK.md 与全部分片 tasks/ → archive/
+   * 2. 删除活跃 TASK.md 与 tasks/
    * 3. 更新 ROADMAP.md 标记完成
    * 4. 清理临时文件恢复仓库纯净
    * 5. 触发永乐大典同步
    */
   closeMilestone() {
-    // 1. 归档
+    // 1. 归档单看板
     this.archivePhase('final');
+
+    // 1.1 若存在分片目录，归档所有分片
+    if (fs.existsSync(this.tasksDir)) {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const milestoneTasksArchive = path.join(this.archiveDir, `milestone-${timestamp}-tasks`);
+      if (!fs.existsSync(milestoneTasksArchive)) {
+        fs.mkdirSync(milestoneTasksArchive, { recursive: true });
+      }
+
+      try {
+        const files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.md'));
+        files.forEach(f => {
+          fs.copyFileSync(path.join(this.tasksDir, f), path.join(milestoneTasksArchive, f));
+        });
+        fs.rmSync(this.tasksDir, { recursive: true, force: true });
+        console.log(`📁 [尚书省归档] 所有分片任务已安全归档至: ${path.relative(this.cwd, milestoneTasksArchive)}`);
+      } catch (_) {}
+    }
 
     // 2. 清理活跃任务看板
     if (fs.existsSync(this.taskPath)) {

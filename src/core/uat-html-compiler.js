@@ -15,6 +15,20 @@ export function findActiveTaskOrPlanPath(cwd = process.cwd(), explicitPath = nul
     if (fs.existsSync(candidate)) {
       return candidate;
     }
+    // 快捷支持 taskId 传参 (如 TASK-01 或 TASK-01.md)
+    const cleanId = String(explicitPath).trim().replace(/^\[|\]$/g, '');
+    const shardDirect = path.join(cwd, '.sansheng', 'tasks', cleanId.endsWith('.md') ? cleanId : `${cleanId}.md`);
+    if (fs.existsSync(shardDirect)) {
+      return shardDirect;
+    }
+    const tasksDir = path.join(cwd, '.sansheng', 'tasks');
+    if (fs.existsSync(tasksDir)) {
+      try {
+        const files = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md'));
+        const matched = files.find(f => f.toLowerCase().startsWith(cleanId.toLowerCase()));
+        if (matched) return path.join(tasksDir, matched);
+      } catch (_) {}
+    }
   }
 
   const candidates = [

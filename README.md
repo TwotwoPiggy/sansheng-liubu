@@ -133,14 +133,16 @@ sansheng update
   sansheng audit-plan
   ```
 
-#### 2. 生成活跃任务看板与质量门禁
-- **底层落盘状态文件**：`.sansheng/TASK.md`（**强制控制在 150 行以内**）
+#### 2. 生成活跃任务看板与任务分片池 (Tasks Sharding)
+- **底层落盘状态文件**：
+  - **任务分片池**：`.sansheng/tasks/TASK-xx.md`（按任务物理隔离，工兵操作独立工件，彻底杜绝覆盖与抢锁）；
+  - **活跃任务看板**：`.sansheng/TASK.md`（**强制控制在 150 行以内**，聚合展示全分片进度与当前活跃高亮指针）；
 - **门禁定义清单 (Quality Gates)**：
   1. **自动化单测门禁**：`dotnet test --verbosity quiet`（0 Failed, 0 Error） / `npx vitest run`（100%通过）；
   2. **边界反例用例**：针对 `[RULE-01]` 至 `[RULE-04]` 的专用拦截测试方法；
   3. **一键冒烟命令**：`dotnet test --filter "Category=Smoke"`；
   4. **人工 UAT 验收项**：`[UAT-01]`、`[UAT-02]`。
-- **100% 覆盖率对账**：严格校验 `[REQ-01 ~ xx]` 是否 100% 绑定到各 Wave 的具体 Task 与 UAT。
+- **100% 覆盖率对账**：严格校验 `[REQ-01 ~ xx]` 是否 100% 绑定到各 Task 分片与 UAT。
 
 #### 3. 对话框极简 3 行 HUD 回显
 AI 严禁长篇刷屏输出伪代码，仅回显 3 行：

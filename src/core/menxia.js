@@ -300,6 +300,18 @@ ${missingSection}${invalidSection}${unboundedSection}
   }
 
   /**
+   * 对分片任务池 (.sansheng/tasks/*.md) 进行全量反向需求审计与门禁校验 (SPEC §9)
+   * 支持传入任务数组或 Shangshu 实例
+   */
+  auditShardedPlan(reqs = [], tasksOrShangshu = []) {
+    let taskList = tasksOrShangshu;
+    if (tasksOrShangshu && typeof tasksOrShangshu.listTasks === 'function') {
+      taskList = tasksOrShangshu.listTasks();
+    }
+    return this.auditPlan(reqs, taskList);
+  }
+
+  /**
    * 生成独立 Auditor Agent 对抗式反向扫描专属 Prompt (SPEC §9)
    */
   generateAdversarialAuditPrompt(reqs = '', planMarkdown = '') {

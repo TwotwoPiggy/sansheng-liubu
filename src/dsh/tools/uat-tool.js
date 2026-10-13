@@ -31,6 +31,11 @@ export function createUatGateTool(config) {
         required: false,
         description: '自定义任务或测试计划路径 (如 test-plan.md)',
       },
+      taskId: {
+        type: 'string',
+        required: false,
+        description: '指定分片任务编号 (如 "TASK-01")',
+      },
     },
     output: {
       schema: {
@@ -51,7 +56,7 @@ export function createUatGateTool(config) {
     },
     async execute(args) {
       const cwd = process.cwd();
-      const taskPath = findActiveTaskOrPlanPath(cwd, args.taskPath);
+      const taskPath = findActiveTaskOrPlanPath(cwd, args.taskPath || args.taskId);
 
       if (!taskPath) {
         return { success: false, message: '未找到活跃 TASK.md 或 test-plan.md', remainingUatCount: 0, allPassed: false };
