@@ -1,6 +1,6 @@
 ---
 name: sansheng-liubu
-description: 基于「三省六部制」的极简高质跨环境 AI 研发工作流系统（中书省起草对齐 / 门下省门禁审核 / 尚书省调度六部工兵执行与两级归档）
+description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁审核、尚书六部执行与归档
 ---
 
 # 三省六部研发工作流指令集
@@ -51,5 +51,14 @@ description: 基于「三省六部制」的极简高质跨环境 AI 研发工作
   - 🟡 L2验证 (dotnet test/vitest)：自动放行
   - 🟠 L3改写 (源码修改)：自动执行 + Git保护
   - 🔴 L4高危 (rm -rf/git push -f/删库/越界路径)：强制人工确认
+
+## 跨平台原生工具与 CLI 扩展 (DSH + Antigravity 双模兼容)
+- **Inline & Spill 链式召回**：支持按 ID（`TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx` / `ARCHIVE`）按需分页展开被 Spill 的上下文与下一跳关联指针。
+  - DSH / MCP 工具：`sansheng_recall`
+  - CLI 指令：`sansheng recall <id> [--offset 0] [--limit 2000] [--json]`
+- **全双工异步工兵**：支持 `start` / `status` / `stop` 非阻塞后台执行与状态持久化（`.sansheng/jobs/`）。
+  - DSH / MCP 工具：`sansheng_dispatch_worker`（`action: "start" | "status" | "stop" | "sync"`）
+  - CLI 指令：`sansheng worker start|status|stop`
+- **Antigravity MCP 挂载**：直接运行 `sansheng mcp` 或 `sansheng-mcp`（stdio MCP Server），与 DSH 同源共享全部 8 个核心工具。
 
 ✅ 引导 AI 注意：在 ALIGN 阶段请务必参考完整规范白皮书 `LITE_DEV_WORKFLOW_SPEC.md`

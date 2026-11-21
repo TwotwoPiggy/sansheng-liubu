@@ -54,4 +54,6 @@ export { CBMBridge } from './tools/cbm-bridge.js';
 export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
 export { createAuditPlanTool } from './dsh/tools/audit-plan-tool.js';
+export { recallById, extractRelatedRefs } from './core/recall.js';
+export { createMcpServer, startMcpServer } from './mcp/server.js';
 export { runUpdate, upgradeNpmPackage, getLocalVersion, getRemoteVersion, compareVersions } from './core/updater.js';

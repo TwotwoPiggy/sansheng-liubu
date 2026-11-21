@@ -13,11 +13,16 @@ import { CBMBridge } from '../src/tools/cbm-bridge.js';
 import { injectVSCodeEnhancements } from '../src/tools/vscode-injector.js';
 import { RuleSync } from '../src/tools/rule-sync.js';
 import { Menxia } from '../src/core/menxia.js';
+import { recallById } from '../src/core/recall.js';
+import { SubagentAdapter } from '../src/tools/subagent-adapter.js';
+import { startMcpServer } from '../src/mcp/server.js';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'help';
 
-console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v${getLocalVersion()}`);
+if (command !== 'mcp' && !args.includes('--json')) {
+  console.log(`🏛️ 【三省六部 (sansheng-liubu)】AI 研发工作流引擎 v${getLocalVersion()}`);
+}
 
 async function main() {
   switch (command) {
@@ -53,6 +58,15 @@ async function main() {
       break;
     case 'archive':
       executeArchive();
+      break;
+    case 'recall':
+      handleRecallCommand(args.slice(1));
+      break;
+    case 'worker':
+      handleWorkerCommand(args.slice(1));
+      break;
+    case 'mcp':
+      startMcpServer({ cwd: process.cwd() });
       break;
     case 'help':
     default:
@@ -317,7 +331,126 @@ function showHelp() {
                                 (参数: --watch / -w 监听文件变动并自动重新编译, --serve / -s 启动免授权本地实时双向服务)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环
   sansheng archive              执行项目两级归档并同步至《永乐大典》
+  sansheng recall <id>          链式召回指定对象 (TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE)
+                                (参数: --offset N, --limit N, --json)
+  sansheng worker <action>      全双工异步工兵控制 (start [taskId] [title] [--cmd ...], status [jobId], stop <jobId>)
+  sansheng mcp                  启动标准 stdio MCP Server (供 Antigravity / VS Code 等直接挂载)
   `);
+}
+
+function getFlagValue(cliArgs, flagName, fallback = undefined) {
+  const idx = cliArgs.indexOf(flagName);
+  if (idx > -1 && cliArgs[idx + 1] !== undefined) {
+    return cliArgs[idx + 1];
+  }
+  return fallback;
+}
+
+function handleRecallCommand(cliArgs = []) {
+  const targetId = cliArgs.find((a, idx) => !a.startsWith('-') && (idx === 0 || !['--offset', '--limit'].includes(cliArgs[idx - 1])));
+  const offset = parseInt(getFlagValue(cliArgs, '--offset', '0'), 10) || 0;
+  const limit = parseInt(getFlagValue(cliArgs, '--limit', '2000'), 10) || 2000;
+  const asJson = cliArgs.includes('--json');
+
+  const res = recallById(targetId, { cwd: process.cwd(), offset, limit });
+  if (asJson) {
+    console.log(JSON.stringify(res, null, 2));
+    return;
+  }
+
+  if (!res.found) {
+    console.log(`\n⚠️ [链式召回] ${res.message}\n`);
+    return;
+  }
+
+  console.log(`\n🔍 [链式召回: ${res.id}] (${res.type} | 来源: ${res.source})\n`);
+  console.log(res.content);
+  if (res.truncated) {
+    console.log(`\n📄 已截断 (${res.offset}~${res.offset + res.content.length} / ${res.totalLength} 字符)，使用 --offset ${res.nextOffset} 可续读。`);
+  }
+  if ((res.related || []).length > 0) {
+    console.log(`\n🔗 下一跳关联指针:`);
+    res.related.forEach(r => console.log(`  - [${r.id}] (${r.type}): ${r.summary}`));
+  }
+  console.log();
+}
+
+function handleWorkerCommand(cliArgs = []) {
+  const sub = cliArgs[0] || 'status';
+  const asJson = cliArgs.includes('--json');
+  const adapter = new SubagentAdapter({}, { cwd: process.cwd() });
+
+  if (sub === 'status') {
+    const jobId = cliArgs[1] && !cliArgs[1].startsWith('-') ? cliArgs[1] : null;
+    const res = jobId ? adapter.getJobStatus(jobId) : adapter.listJobs();
+    if (asJson) {
+      console.log(JSON.stringify(res, null, 2));
+      return;
+    }
+    if (Array.isArray(res)) {
+      if (res.length === 0) {
+        console.log(`\n📊 当前无后台工兵记录。\n`);
+      } else {
+        console.log(`\n📊 [六部后台工兵看板] 共 ${res.length} 条记录:`);
+        res.slice(0, 10).forEach(j => console.log(`  - [${j.jobId}] (${j.taskId}) ${j.status} | 模型: ${j.modelUsed || j.model}`));
+        console.log();
+      }
+      return;
+    }
+    if (!res.found) {
+      console.log(`\n⚠️ ${res.message}\n`);
+      return;
+    }
+    console.log(`\n📊 [Job ${res.jobId}] 状态: ${res.status} | 任务: [${res.taskId}]`);
+    if (res.logTail) console.log(`最近日志:\n${res.logTail}`);
+    console.log();
+    return;
+  }
+
+  if (sub === 'stop') {
+    const jobId = cliArgs[1];
+    const res = adapter.stopJob(jobId);
+    console.log(asJson ? JSON.stringify(res, null, 2) : `\n🛑 ${res.message}\n`);
+    return;
+  }
+
+  if (sub === 'start') {
+    const positional = [];
+    for (let i = 1; i < cliArgs.length; i++) {
+      if (['--cmd', '--id', '--title'].includes(cliArgs[i])) {
+        i++;
+        continue;
+      }
+      if (!cliArgs[i].startsWith('-')) {
+        positional.push(cliArgs[i]);
+      }
+    }
+
+    let taskId = getFlagValue(cliArgs, '--id');
+    let taskTitle = getFlagValue(cliArgs, '--title');
+    const testCmd = getFlagValue(cliArgs, '--cmd');
+
+    if (positional.length >= 2) {
+      taskId = taskId || positional[0];
+      taskTitle = taskTitle || positional[1];
+    } else if (positional.length === 1) {
+      if (/^(TASK|REQ|UAT|JOB)-/i.test(positional[0])) {
+        taskId = taskId || positional[0];
+      } else {
+        taskTitle = taskTitle || positional[0];
+      }
+    }
+
+    const res = adapter.startJob({
+      ...(taskId ? { id: taskId } : {}),
+      ...(taskTitle ? { title: taskTitle } : {}),
+      ...(testCmd ? { testCmd } : {}),
+    });
+    console.log(asJson ? JSON.stringify(res, null, 2) : `\n🚀 ${res.message} (jobId: ${res.jobId})\n`);
+    return;
+  }
+
+  console.log(`\n⚠️ 未知 worker 动作: ${sub}，支持 start / status / stop\n`);
 }
 
 main().catch(err => {

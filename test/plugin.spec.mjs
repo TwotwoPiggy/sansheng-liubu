@@ -56,7 +56,7 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
     assert.strictEqual(SanshengPlugin.default, undefined, '严禁包含 export default');
   });
 
-  it('2. apply 必须成功向 ctx.tools 注册全量 7 大三省六部核心工具', () => {
+  it('2. apply 必须成功向 ctx.tools 注册全量 8 大三省六部核心工具', () => {
     SanshengPlugin.apply(mockContext, {
       models: {
         architectTier: 'gemini-3.7-flash',
@@ -66,7 +66,7 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
       escalationMaxRetries: 2
     });
 
-    assert.strictEqual(mockTools.length, 7, '应注册 7 个核心 Tool');
+    assert.strictEqual(mockTools.length, 8, '应注册 8 个核心 Tool');
     
     const toolNames = mockTools.map(t => t.name);
     assert.ok(toolNames.includes('sansheng_codebase_map'));
@@ -76,6 +76,7 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
     assert.ok(toolNames.includes('sansheng_archive'));
     assert.ok(toolNames.includes('sansheng_sync_rules'));
     assert.ok(toolNames.includes('sansheng_dispatch_worker'));
+    assert.ok(toolNames.includes('sansheng_recall'));
   });
 
   it('3. 所有工具必须遵循 DSH 权限分级与安全等级元数据标准', () => {
@@ -104,6 +105,10 @@ describe('DeepSeek Harness (DSH) / Cordis 插件规范测试套件', () => {
     const workerTool = mockTools.find(t => t.name === 'sansheng_dispatch_worker');
     assert.strictEqual(workerTool.permissionTier, 'dangerous');
     assert.strictEqual(workerTool.riskLevel, 'high');
+
+    const recallTool = mockTools.find(t => t.name === 'sansheng_recall');
+    assert.strictEqual(recallTool.permissionTier, 'read-only');
+    assert.strictEqual(recallTool.riskLevel, 'low');
   });
 
   it('4. 高危工兵调度 (sansheng_dispatch_worker) 必须满足 Fail-Closed 审批阻断原则', async () => {

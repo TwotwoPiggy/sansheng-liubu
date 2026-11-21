@@ -5,6 +5,7 @@ import { createArchiveTool } from './tools/archive-tool.js';
 import { createSyncRulesTool } from './tools/sync-rules-tool.js';
 import { createDispatchWorkerTool } from './tools/dispatch-worker-tool.js';
 import { createAuditPlanTool } from './tools/audit-plan-tool.js';
+import { createRecallTool } from './tools/recall-tool.js';
 
 /**
  * 注册三省六部全量 DSH 工具集至 Cordis 上下文
@@ -22,6 +23,7 @@ export function registerSanshengTools(ctx, config) {
     createArchiveTool(config),
     createSyncRulesTool(config),
     createDispatchWorkerTool(ctx, config),
+    createRecallTool(config),
   ];
 
   tools.forEach(tool => {
