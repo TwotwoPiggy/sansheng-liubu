@@ -11,6 +11,7 @@ import { promptAndInstallYongle } from '../src/tools/yongle-installer.js';
 import { LSPClient } from '../src/tools/lsp-client.js';
 import { CBMBridge } from '../src/tools/cbm-bridge.js';
 import { injectVSCodeEnhancements } from '../src/tools/vscode-injector.js';
+import { syncGlobalSkills } from '../src/tools/skill-injector.js';
 import { RuleSync } from '../src/tools/rule-sync.js';
 import { Menxia } from '../src/core/menxia.js';
 import { recallById } from '../src/core/recall.js';
@@ -109,8 +110,9 @@ async function initProject() {
   console.log(`   ➔ Vue LSP (${vueLsp.command}): ${vueLsp.installed ? '✅ 已就绪' : `⚠️ 未安装 (推荐: ${vueLsp.tip})`}`);
   console.log(`   ➔ CBM 知识图谱 (codebase-memory-mcp): ${cbm.installed ? '✅ 已就绪 (15 个 MCP 架构工具已激活)' : `⚠️ 未安装 (推荐: ${cbm.tip})`}`);
 
-  // 3. 自动注入 VS Code 与 GitHub Copilot 专属增强套件
+  // 3. 自动注入 VS Code 与 GitHub Copilot 专属增强套件，并同步全局 AI 运行时 Skills
   injectVSCodeEnhancements(cwd);
+  syncGlobalSkills();
 
   // 4. 初始化工作区配置与 .sansheng 目录
   const sanshengDir = path.join(cwd, '.sansheng');
@@ -321,8 +323,8 @@ function showHelp() {
   sansheng init                 初始化三省六部工作区 (收敛配置与总纲至 .sansheng/，注入 VS Code 增强)
   sansheng sync-rules           嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译同步至 VS Code Copilot
   sansheng sync-rules --export  反向导出集中规则至指定 IDE (如 --export trae,catpaw,qoder)
-  sansheng update               从 NPM 检查并原地升级至最新版本，无损增量同步工作区配置与 IDE 规则
-                                (参数: --check 仅检查版本, --skip-npm 仅同步工作区, --force 强制重装)
+  sansheng update [ver]         自动识别 Git/NPM 模式检查并升级，自动重注入全局 AI 运行时 Skills 与工作区规则
+                                (参数: --check 仅检查, --skip-npm 仅同步技能与配置, --skip-skills, --skip-workspace, --force, --mode git|npm, --json)
   sansheng map                  生成双层拓扑地图与索引 (.sansheng/codebase_map.md & codebase_index.json)
                                 (参数: --focus <path> 提取局部邻居切片, --clear-cache 清理增量指纹)
   sansheng status               查看当前活跃阶段的 3 行 HUD 任务进度

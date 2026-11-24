@@ -22,7 +22,7 @@ describe('DSH + Antigravity 双模兼容测试套件 (MCP Server & CLI)', () => 
     } catch (_) {}
   });
 
-  it('1. createMcpServer 支持标准 MCP initialize 与 tools/list (同源暴露全部 8 个工具)', async () => {
+  it('1. createMcpServer 支持标准 MCP initialize 与 tools/list (同源暴露全部 9 个工具)', async () => {
     const server = createMcpServer({ cwd: tmpDir });
 
     const initRes = await server.handleMessage({
@@ -40,9 +40,10 @@ describe('DSH + Antigravity 双模兼容测试套件 (MCP Server & CLI)', () => 
       method: 'tools/list',
     });
     const names = listRes.result.tools.map(t => t.name);
-    assert.strictEqual(names.length, 8);
+    assert.strictEqual(names.length, 9);
     assert.ok(names.includes('sansheng_recall'));
     assert.ok(names.includes('sansheng_dispatch_worker'));
+    assert.ok(names.includes('sansheng_update'));
 
     const recallTool = listRes.result.tools.find(t => t.name === 'sansheng_recall');
     assert.strictEqual(recallTool.inputSchema.type, 'object');
@@ -99,5 +100,39 @@ describe('DSH + Antigravity 双模兼容测试套件 (MCP Server & CLI)', () => 
     });
     const workerJson = JSON.parse(workerStdout);
     assert.ok(Array.isArray(workerJson));
+  });
+
+  it('4. createMcpServer tools/call 支持 sansheng_update (sync-skills) 与 CLI --json 输出', async () => {
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'sansheng-home-'));
+    try {
+      fs.mkdirSync(path.join(fakeHome, '.gemini', 'antigravity'), { recursive: true });
+
+      const server = createMcpServer({ cwd: tmpDir, homeDir: fakeHome });
+      const callRes = await server.handleMessage({
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'tools/call',
+        params: {
+          name: 'sansheng_update',
+          arguments: { action: 'sync-skills', skipWorkspace: true },
+        },
+      });
+
+      assert.strictEqual(callRes.result.isError, false);
+      assert.strictEqual(callRes.result.structuredContent.success, true);
+      assert.ok(callRes.result.structuredContent.skillsResult.detectedRuntimes.includes('antigravity'));
+      assert.ok(fs.existsSync(path.join(fakeHome, '.gemini', 'antigravity', 'skills', 'sansheng-update', 'SKILL.md')));
+
+      const updateStdout = execFileSync(
+        process.execPath,
+        [cliPath, 'update', '--skip-npm', '--skip-skills', '--skip-workspace', '--json'],
+        { cwd: tmpDir, encoding: 'utf-8', windowsHide: true }
+      );
+      const parsed = JSON.parse(updateStdout);
+      assert.strictEqual(parsed.success, true);
+      assert.strictEqual(parsed.pkgResult.status, 'skipped');
+    } finally {
+      try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch (_) {}
+    }
   });
 });

@@ -10,7 +10,7 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
 ## 交互模式与快捷键
 
 - **零前缀感知**：根据用户自然语言输入，自动切换中书省(ALIGN)与六部(RUN)阶段。
-- **统一指令**：输入 `/sansheng [内容]` 自动路由生命周期；`/sansheng map` 更新拓扑图；`/sansheng sync-rules` 转译规则；`/sansheng update` 从 npm 原地更新最新版并同步工作区。
+- **统一指令**：输入 `/sansheng [内容]` 自动路由生命周期；`/sansheng map` 更新拓扑图；`/sansheng sync-rules` 转译规则；`/sansheng update` 自动识别 Git/npm 模式更新最新版并重注入全局 Skills 与工作区。
 
 | 快捷键 | 功能描述 |
 |---|---|
@@ -59,6 +59,9 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
 - **全双工异步工兵**：支持 `start` / `status` / `stop` 非阻塞后台执行与状态持久化（`.sansheng/jobs/`）。
   - DSH / MCP 工具：`sansheng_dispatch_worker`（`action: "start" | "status" | "stop" | "sync"`）
   - CLI 指令：`sansheng worker start|status|stop`
-- **Antigravity MCP 挂载**：直接运行 `sansheng mcp` 或 `sansheng-mcp`（stdio MCP Server），与 DSH 同源共享全部 8 个核心工具。
+- **一键升级与多运行时技能同步**：自动识别 Git 仓库 / npm 全局包模式，支持指定版本/Tag、失败回滚，并自动重注入 Antigravity/Claude/Cursor/Trae 等全局 AI 运行时 Skills。
+  - DSH / MCP 工具：`sansheng_update`（`action: "check" | "update" | "sync-skills"`）
+  - CLI 指令：`sansheng update [version] [--check] [--skip-npm] [--force] [--json]`
+- **Antigravity MCP 挂载**：直接运行 `sansheng mcp` 或 `sansheng-mcp`（stdio MCP Server），与 DSH 同源共享全部 9 个核心工具。
 
 ✅ 引导 AI 注意：在 ALIGN 阶段请务必参考完整规范白皮书 `LITE_DEV_WORKFLOW_SPEC.md`

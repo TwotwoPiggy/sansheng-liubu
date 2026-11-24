@@ -52,8 +52,19 @@ export { YongleBridge } from './tools/yongle-bridge.js';
 export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-installer.js';
 export { CBMBridge } from './tools/cbm-bridge.js';
 export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
+export { syncGlobalSkills, collectBuiltinSkills, getRuntimeSkillTargets } from './tools/skill-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
 export { createAuditPlanTool } from './dsh/tools/audit-plan-tool.js';
+export { createUpdateTool } from './dsh/tools/update-tool.js';
 export { recallById, extractRelatedRefs } from './core/recall.js';
 export { createMcpServer, startMcpServer } from './mcp/server.js';
-export { runUpdate, upgradeNpmPackage, getLocalVersion, getRemoteVersion, compareVersions } from './core/updater.js';
+export {
+  runUpdate,
+  upgradeNpmPackage,
+  upgradeGitPackage,
+  detectInstallMode,
+  parseUpdateOptions,
+  getLocalVersion,
+  getRemoteVersion,
+  compareVersions,
+} from './core/updater.js';

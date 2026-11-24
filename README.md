@@ -72,11 +72,17 @@ sansheng sync-rules
 sansheng sync-rules --export trae,qoder,cursor
 ```
 
-#### 4. 智能检测与原地升级 (无需卸载)
+#### 4. 智能检测、双模式原地升级与多运行时 Skill 同步
 ```bash
-# 从 NPM 官方源自动检测最新版本并原地覆盖升级，无损同步工作区配置与 IDE 规则
+# 自动识别 Git 仓库 / NPM 全局包模式检查并升级，自动重注入全局 AI 运行时 Skills 与工作区规则
 sansheng update
+
+# 仅检查可用更新 / 指定版本或 Tag / 仅同步全局 Skills 与配置
+sansheng update --check
+sansheng update v1.5.0
+sansheng update --skip-npm
 ```
+- **Agent 对话直接触发**：直接对 Agent 说“帮我更新三省六部”或输入 `/sansheng-update`，Agent 将优先调用 MCP 工具 `sansheng_update`（未挂载 MCP 时自动执行 `sansheng update --json`），并在升级后自动把最新版 `sansheng-liubu`、`sansheng-recall`、`sansheng-worker`、`sansheng-update` 重注入 Antigravity / Claude / Cursor / Trae 等已安装运行时的全局 `skills/` 目录。
 
 ---
 
