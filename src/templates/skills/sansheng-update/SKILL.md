@@ -23,6 +23,6 @@ description: 三省六部自动更新与技能同步：自动识别 Git/npm 模�
 ## 2. 执行结果汇报
 执行完成后，向用户简洁汇报：
 - **安装模式与版本变化**：`git` 或 `npm` 模式，升级前版本 → 升级后版本（或已是最新）。
-- **全局 AI 运行时 Skills 同步情况**：已更新哪些运行时（如 Antigravity、Claude、Cursor、Trae 等）以及同步了哪些技能。
+- **全局 AI 运行时 Skills 同步情况**：已更新哪些运行时（如 Antigravity、VS Code Copilot、Claude、Cursor、Trae 等）以及同步了哪些技能与 Copilot Custom Agents。
 - **工作区同步状态**：若当前目录包含 `.sansheng/`，汇报配置与 IDE 规则刷新结果；若非三省项目目录则说明已跳过避免污染。
 - **异常处理**：若检测到 Git 脏工作区或权限不足（`EACCES`/`EPERM`），清晰给出原因和用户可执行的下一步命令，不强行覆盖未提交修改。

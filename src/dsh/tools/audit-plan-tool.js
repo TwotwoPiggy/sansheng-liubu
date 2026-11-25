@@ -43,8 +43,8 @@ export function createAuditPlanTool(config) {
         },
       ],
     },
-    async execute({ requirements = '', plan = '' } = {}) {
-      const cwd = process.cwd();
+    async execute({ requirements = '', plan = '', cwd: argCwd } = {}) {
+      const cwd = argCwd || config?.cwd || process.cwd();
       let planContent = plan;
 
       // 若未提供 plan，尝试从活跃 TASK.md 中读取

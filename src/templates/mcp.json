@@ -1,8 +1,10 @@
 {
-  "mcpServers": {
-    "codebase-memory": {
-      "command": "codebase-memory-mcp",
-      "args": []
+  "servers": {
+    "sansheng-liubu": {
+      "type": "stdio",
+      "command": "sansheng-mcp",
+      "args": [],
+      "cwd": "${workspaceFolder}"
     }
   }
 }

@@ -10,7 +10,11 @@ import { runUpdate, getLocalVersion } from '../src/core/updater.js';
 import { promptAndInstallYongle } from '../src/tools/yongle-installer.js';
 import { LSPClient } from '../src/tools/lsp-client.js';
 import { CBMBridge } from '../src/tools/cbm-bridge.js';
-import { injectVSCodeEnhancements } from '../src/tools/vscode-injector.js';
+import {
+  injectVSCodeEnhancements,
+  syncGlobalVSCodeCopilot,
+  inspectVSCodeCopilotStatus,
+} from '../src/tools/vscode-injector.js';
 import { syncGlobalSkills } from '../src/tools/skill-injector.js';
 import { RuleSync } from '../src/tools/rule-sync.js';
 import { Menxia } from '../src/core/menxia.js';
@@ -29,6 +33,10 @@ async function main() {
   switch (command) {
     case 'init':
       await initProject();
+      break;
+    case 'copilot':
+    case 'vscode':
+      handleCopilotCommand(args.slice(1));
       break;
     case 'sync-rules':
     case 'rules':
@@ -66,9 +74,11 @@ async function main() {
     case 'worker':
       handleWorkerCommand(args.slice(1));
       break;
-    case 'mcp':
-      startMcpServer({ cwd: process.cwd() });
+    case 'mcp': {
+      const mcpCwd = getFlagValue(args.slice(1), '--cwd');
+      startMcpServer({ cwd: mcpCwd ? path.resolve(mcpCwd) : process.cwd() });
       break;
+    }
     case 'help':
     default:
       showHelp();
@@ -320,9 +330,11 @@ async function handleExportHtml(cliArgs = []) {
 function showHelp() {
   console.log(`
 用法:
-  sansheng init                 初始化三省六部工作区 (收敛配置与总纲至 .sansheng/，注入 VS Code 增强)
-  sansheng sync-rules           嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译同步至 VS Code Copilot
-  sansheng sync-rules --export  反向导出集中规则至指定 IDE (如 --export trae,catpaw,qoder)
+  sansheng init                 初始化三省六部工作区 (收敛配置与总纲至 .sansheng/，注入 VS Code Copilot 增强)
+  sansheng copilot [action]     VS Code Copilot 原生集成与体检 (setup/install 一键配置, status/check 健康体检)
+                                (参数: --global-only 仅配置全局, --workspace-only 仅配置当前工作区, --no-global-mcp, --dry-run, --json)
+  sansheng sync-rules           嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译同步至 VS Code Copilot (.github/instructions & prompts)
+  sansheng sync-rules --export  反向导出集中规则至指定 IDE (如 --export trae,catpaw,qoder,copilot)
   sansheng update [ver]         自动识别 Git/NPM 模式检查并升级，自动重注入全局 AI 运行时 Skills 与工作区规则
                                 (参数: --check 仅检查, --skip-npm 仅同步技能与配置, --skip-skills, --skip-workspace, --force, --mode git|npm, --json)
   sansheng map                  生成双层拓扑地图与索引 (.sansheng/codebase_map.md & codebase_index.json)
@@ -453,6 +465,96 @@ function handleWorkerCommand(cliArgs = []) {
   }
 
   console.log(`\n⚠️ 未知 worker 动作: ${sub}，支持 start / status / stop\n`);
+}
+
+function handleCopilotCommand(cliArgs = []) {
+  const cwd = process.cwd();
+  const sub = cliArgs[0] && !cliArgs[0].startsWith('-') ? cliArgs[0].toLowerCase() : 'setup';
+  const asJson = cliArgs.includes('--json');
+  const dryRun = cliArgs.includes('--dry-run');
+  const globalOnly = cliArgs.includes('--global-only') || cliArgs.includes('--global');
+  const workspaceOnly = cliArgs.includes('--workspace-only') || cliArgs.includes('--workspace');
+  const noGlobalMcp = cliArgs.includes('--no-global-mcp');
+
+  if (sub === 'status' || sub === 'check' || sub === 'doctor') {
+    const status = inspectVSCodeCopilotStatus(cwd);
+    if (asJson) {
+      console.log(JSON.stringify(status, null, 2));
+      return;
+    }
+
+    const mark = (ok) => (ok ? '✅' : '⚠️');
+    console.log(`\n🩺 [VS Code Copilot 集成体检报告]`);
+    console.log(`   工作区状态 (${path.basename(cwd)}): ${status.workspaceReady ? '✅ 完整就绪' : '⚠️ 待补齐 (运行 sansheng copilot setup 修复)'}`);
+    console.log(`   ${mark(status.workspace.instructions.configured)} Custom Instructions: .github/copilot-instructions.md${status.workspace.instructions.anchored ? ' (锚点版)' : ''}`);
+    console.log(`   ${mark(status.workspace.skills.complete)} Workspace Skills: .github/skills/ (${status.workspace.skills.installed.length}/${status.workspace.skills.expected.length})`);
+    console.log(`   ${mark(status.workspace.agents.complete)} Custom Agents: .github/agents/ (${status.workspace.agents.installed.length}/${status.workspace.agents.expected.length})`);
+    console.log(`   ${mark(status.workspace.prompts.ready)} Prompt Files: .github/prompts/sansheng.prompt.md`);
+    console.log(`   ${mark(status.workspace.mcp.hasSansheng)} Workspace MCP: .vscode/mcp.json${status.workspace.mcp.usesLegacyKey ? ' (检测到旧版 mcpServers 键，建议运行 sansheng copilot setup 自动迁移)' : ''}`);
+    console.log(`   ${mark(status.workspace.settings.promptFilesEnabled && status.workspace.settings.agentSkillsEnabled)} VS Code Settings: chat.promptFiles=${status.workspace.settings.promptFilesEnabled}, chat.useAgentSkills=${status.workspace.settings.agentSkillsEnabled}`);
+    console.log(`\n   全局状态 (${status.global.copilotDir}): ${status.globalReady ? '✅ 完整就绪' : '⚠️ 待补齐'}`);
+    console.log(`   ${mark(status.global.skills.complete)} Global Skills: ${status.global.skills.dir} (${status.global.skills.installed.length}/${status.global.skills.expected.length})`);
+    console.log(`   ${mark(status.global.agents.complete)} Global Agents: ${status.global.agents.dir} (${status.global.agents.installed.length}/${status.global.agents.expected.length})`);
+    console.log(`   ${mark(status.global.mcpConfig.ready)} Copilot Harness MCP: ${status.global.mcpConfig.path}`);
+    if (status.global.vscodeUsers.length > 0) {
+      status.global.vscodeUsers.forEach(ed => {
+        console.log(`   ${mark(ed.promptsReady && ed.mcpReady)} ${ed.name} User: prompts=${ed.promptsReady}, mcp=${ed.mcpReady}`);
+      });
+    } else {
+      console.log(`   ℹ️ 未检测到本机 VS Code User 配置目录`);
+    }
+    console.log();
+    return;
+  }
+
+  if (sub === 'setup' || sub === 'install' || sub === 'sync') {
+    let workspaceResult = null;
+    let globalResult = null;
+
+    if (!globalOnly) {
+      workspaceResult = injectVSCodeEnhancements(cwd, {
+        includeGlobal: false,
+        dryRun,
+        silent: asJson,
+      });
+    }
+
+    if (!workspaceOnly) {
+      globalResult = syncGlobalVSCodeCopilot({
+        includeSkills: true,
+        includeAgents: true,
+        includePrompts: true,
+        includeGlobalMcp: !noGlobalMcp,
+        createMissingUserDir: true,
+        dryRun,
+        silent: asJson,
+      });
+    }
+
+    const summary = {
+      success: (workspaceResult ? workspaceResult.success : true)
+        && ((globalResult?.warnings?.length || 0) === 0),
+      action: sub,
+      dryRun,
+      workspace: workspaceResult,
+      global: globalResult,
+    };
+
+    if (asJson) {
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+
+    console.log(`\n🎉 [VS Code Copilot 适配完成]${dryRun ? ' (Dry-Run 预览，未写盘)' : ''}`);
+    console.log(`   💡 在 VS Code Copilot Chat 中可直接使用：`);
+    console.log(`      • Custom Agents 选择器: @sansheng / @zhongshu / @menxia / @shangshu（支持一键 Handoff 流转）`);
+    console.log(`      • 斜杠命令 / Skills: /sansheng、/sansheng-recall、/sansheng-worker、/sansheng-update`);
+    console.log(`      • 原生 MCP 工具: sansheng-liubu (9 大核心工具自动挂载)`);
+    console.log(`   🩺 运行 \`sansheng copilot status\` 可随时体检集成状态。\n`);
+    return;
+  }
+
+  console.log(`\n⚠️ 未知 copilot 动作: ${sub}，支持 setup / status\n`);
 }
 
 main().catch(err => {

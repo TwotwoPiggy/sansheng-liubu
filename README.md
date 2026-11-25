@@ -36,14 +36,26 @@
 
 在终端（Terminal）进入你的业务项目根目录（如 `CatFoodManager`）：
 
-#### 1. 初始化三省六部工作区
+#### 1. 初始化三省六部工作区 / 一键接入 VS Code Copilot
 ```bash
+# 完整初始化三省六部工作区 + VS Code Copilot 套件 + 多运行时 Skills
 sansheng init
+
+# 专用于 VS Code Copilot 的一键配置（工作区 + 全局 Skills/Agents/Prompts/MCP）与体检
+sansheng copilot setup
+sansheng copilot status
+
+# 仅配置本机全局 Copilot（不向当前目录写入任何文件），或仅配置当前项目工作区
+sansheng copilot setup --global-only
+sansheng copilot setup --workspace-only
 ```
-- **执行效果**：
-  - 自动创建 `.sansheng/` 私有目录（含 `config.json` 与 `ROADMAP.md`）；
-  - 自动检测并注入 VS Code Copilot 全套规则（`.github/copilot-instructions.md`、`.vscode/mcp.json`、`.vscode/tasks.json`、`.github/prompts/sansheng.prompt.md`）；
-  - 自动将临时缓存加入 `.gitignore`，杜绝 Git 污染。
+- **执行效果（VS Code Copilot 原生全栈支持）**：
+  - **Custom Instructions**：锚点安全合并 `.github/copilot-instructions.md`（绝不覆写用户原有规则，后续升级原地刷新）；
+  - **Agent Skills**：自动同步全套 4 个技能（`sansheng-liubu`、`sansheng-recall`、`sansheng-worker`、`sansheng-update`）至 `.github/skills/` 与全局 `~/.copilot/skills/`，并开启 `.vscode/settings.json` 中的 `chat.useAgentSkills: true`；
+  - **Custom Agents + Handoffs**：注入 `.github/agents/` 与 `~/.copilot/agents/` 四个原生角色（`@sansheng` 总控、`@zhongshu` 中书对齐、`@menxia` 门下审核、`@shangshu` 尚书执行），支持一键 Handoff 无缝交接；
+  - **Prompt Files**：注入 `.github/prompts/` 与用户级 `Code/User/prompts/`（使用官方标准 `agent: 'agent'`，`chat.promptFiles: true`）；
+  - **原生 MCP 挂载**：采用 VS Code 官方 `servers` + `stdio` 规范无损合并 `.vscode/mcp.json`（及全局 `Code/User/mcp.json`、`~/.copilot/mcp-config.json`），自动挂载 `sansheng-liubu` 9 大核心工具，并自动将旧版 `mcpServers` 格式无损迁移；
+  - 自动创建 `.sansheng/` 私有目录（含 `config.json` 与 `ROADMAP.md`），并将临时缓存加入 `.gitignore`。
 
 #### 2. 生成双层 AST 代码符号与依赖拓扑地图 (Token 压缩率 > 95%)
 ```bash
@@ -417,10 +429,12 @@ DSH 模型上下文可随时调用以下受控工具：
 
 | 命令 | 适用场景 | 对应三省六部底层逻辑 |
 | :--- | :--- | :--- |
-| `sansheng init` | 首次接入或新项目初始化 | 嗅探环境、注入 VS Code Copilot 全套规则与 MCP 配置 |
+| `sansheng init` | 首次接入或新项目初始化 | 嗅探环境、注入 VS Code Copilot 全套规则（Skills/Agents/Prompts/MCP）与配置 |
+| `sansheng copilot setup` | 一键配置 VS Code Copilot | 同步工作区与全局 Copilot Instructions / Skills / Custom Agents / Prompts / MCP |
+| `sansheng copilot status` | 体检 VS Code Copilot 状态 | 检测工作区与全局 Skills、Agents、MCP (`servers`) 与 `settings.json` 就绪状态 |
 | `sansheng map` | 源码结构变动时重新扫描 | 提取 AST 骨架生成 `.sansheng/codebase_map.md` (压缩率>95%) |
-| `sansheng sync-rules` | 多 IDE 协同开发时 | 嗅探 Trae/CatPaw/Qoder/Cursor 规则并智能转译至 Copilot |
-| `sansheng sync-rules --export <ide>` | 导出规则至其他 IDE | 将集中维护的规则导出为 `.trae/rules.md` / `.cursorrules` 等 |
+| `sansheng sync-rules` | 多 IDE 协同开发时 | 嗅探 Trae/CatPaw/Qoder/Cursor 规则并转译至 `.github/copilot-instructions.md` 与 `.github/instructions/*.instructions.md` |
+| `sansheng sync-rules --export <ide>` | 导出规则至其他 IDE | 将集中维护的规则导出为 `.trae/rules.md` / `.cursorrules` / `.github/copilot-instructions.md` 等 |
 | `sansheng status` | 随时查看进度 | 查看当前活跃 Phase 的 3 行 HUD 任务进度看板 |
 | `sansheng html` | 网页可视化鼠标勾选 | 0 Token 编译本地自包含 UAT 看板 (`.sansheng/uat.html`)，支持浏览器静默写回 |
 | `sansheng uat` | 命令行交互验收 | 启动交互式单项 UAT 验收与自愈修复循环 |

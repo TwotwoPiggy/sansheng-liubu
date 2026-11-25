@@ -4,32 +4,31 @@
 
 ## 1. 核心交互与去形式主义原则 (Zero-Fluff)
 - **禁止废话刷屏**：严禁在聊天窗口输出超过 15 行的冗长设计方案或数百行伪代码。
-- **单文件真理源**：所有计划、任务与质量门禁必须写入 `.sansheng/TASK.md`（严格限制在 150 行以内，亦兼容根目录 `TASK.md`）。
-- **极简 3 行 HUD 回显**：计划生成后，聊天框只允许回显 3 行进度看板（Wave 进度 + 下一步指示）。
+- **单文件真理源与任务分片**：总览计划与质量门禁写入 `.sansheng/TASK.md`（严格限制在 150 行以内，兼容根目录 `TASK.md`）；复杂多任务拆分为物理隔离分片 `.sansheng/tasks/TASK-xx.md`。
+- **极简 3 行 HUD 回显**：计划生成后，聊天框只允许回显 3 行进度看板（Wave 进度 + 门禁状态 + 下一步指示）。
+- **工具调用优先级**：优先调用已挂载的 `sansheng-liubu` MCP 工具（`sansheng_codebase_map`、`sansheng_task_status`、`sansheng_audit_plan`、`sansheng_recall`、`sansheng_dispatch_worker`、`sansheng_uat_gate`、`sansheng_archive`、`sansheng_sync_rules`、`sansheng_update`）；未挂载 MCP 时无缝降级为终端 `sansheng` CLI。
 
 ## 2. 中书省 ALIGN 对齐法则
-- 遇到新需求时，前置检索《永乐大典》避坑规范与 `.sansheng/codebase_map.md` 代码骨架。
-- **原子粉碎防漏**：严禁直接出 Plan！必须先将 PRD 拆解为带编号与 AC (正常流/异常流) 的原子清单 `[REQ-01 ~ REQ-xx]`。
-- 提问必须遵守四要素微引用格式：`📍 坐标` + `📝 微引用(20字以内)` + `🔍 疑点/两难` + `💡 推荐阶梯选项 (2~4项)`。
-- 提炼 3~5 条边界铁律 `[RULE-01 ~ RULE-xx]`。
-- 支持单字符决策 (`1A 2B`) 与三态决策 (`A+B` 分层 / 决裁矩阵 / 阶段演进)。
+- 遇到新需求时，前置检索《永乐大典》避坑规范，并通过 `sansheng_codebase_map` / `.sansheng/codebase_map.md` 感知代码骨架。
+- **原子粉碎防漏**：严禁直接出 Plan！必须先将 PRD 拆解为带编号与 AC（正常流/异常流）的原子清单 `[REQ-01 ~ REQ-xx]`。
+- **非阻塞流式质询**：严禁弹出阻塞表单，提问采用四要素微引用格式：`📍 坐标` + `📝 微引用(≤20字)` + `🔍 疑点/两难` + `💡 推荐阶梯选项 (2~4项)`。
+- 提炼 3~5 条边界铁律 `[RULE-01 ~ RULE-xx]`；支持单字符决策 (`1A 2B`)、三态决策 (`A+B` / `先B后A`) 与插话回溯 (`修改 Q1 为 B`)。
 
 ## 3. 门下省 PLAN 与质量门禁 (Quality Gates)
-- **显式绑定**：每个 Task 必须挂载负责实现的 `[REQ-xx]`。
-- **对抗式反向扫描与封驳**：拿原子 REQ 逐条反查 Plan。若存在需求遗漏或边界缺失，**立即出具《封驳差额单》阻断计划**，打回补齐。
-- 为 C# (.NET) 和 Vue 3 生成专属质量门禁：
-  - 自动化测试：`dotnet test --verbosity quiet` / `npx vitest run` 100% 绿灯。
-  - 边界反例用例通过 (`[RULE-xx]`)。
-  - 端到端冒烟命令。
-  - 四要素人工 UAT 清单 `[UAT-01]`（严格按 PRD 预期编写，包含需求溯源、前置数据、操作步骤、PRD预期核对）。
+- **显式绑定**：每个 Task 必须显式挂载负责实现的 `[REQ-xx]`。
+- **对抗式反向扫描与封驳**：调用 `sansheng_audit_plan`（或 `sansheng audit-plan`）拿原子 REQ 逐条反查 Plan。若存在需求遗漏或边界缺失，**立即出具《封驳差额单》阻断计划**，打回补齐。
+- 制定完整质量门禁：
+  - 自动化测试：100% 绿灯（如 `npm test` / `dotnet test --verbosity quiet` / `npx vitest run`）。
+  - 边界反例用例通过 (`[RULE-xx]`) 与端到端冒烟命令。
+  - 四要素人工 UAT 清单 `[UAT-xx]`（需求溯源、前置数据、操作步骤、🎯 PRD 预期核对）。
 - 严格进行 Task 与 UAT 双向 100% 需求覆盖率对账（无源不立、无漏不结）。
 
 ## 4. 尚书省 & 六部 RUN 执行法则
-- **微切片纯净执行**：向工兵仅投喂当前 Task 绑定的 `[REQ-xx]` 与边界铁律，杜绝无关上下文稀释注意力。
-- **测试断言守门**：工兵编码前先确认/编写单测断言，单测全绿方可交付。
-- **Diff 行级对账**：提交前核对 Git Diff，确保 PRD 规则真实落地，杜绝伪实现。
-- **物理级节流**：重构调用 LSP 原生指令 (0-Token)；排版调用 `dotnet format` / `biome`，严禁消耗生成 Token 调缩进。
-- **单项四要素 UAT 自愈**：逐项按 PRD 预期核验。遇到 Bug 原地写复现用例 ➔ 原地修复 ➔ 原地复测，通过后自动触发《永乐大典》归档。
+- **微切片纯净执行**：通过 `sansheng_recall` 按 ID（`TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx`）分页按需召回上下文，向工兵仅投喂当前 Task 绑定的 `[REQ-xx]` 与 `[RULE-xx]`。
+- **测试断言守门与 Diff 对账**：编码前先确认/编写边界单测断言，单测全绿方可交付；提交前核对 Git Diff，杜绝伪实现与空 TODO。
+- **物理级节流与异步工兵**：排版交给 `dotnet format` / `biome` / `prettier`；耗时任务可用 `sansheng_dispatch_worker` 后台非阻塞执行。
+- **四级权限保护**：高危操作（`rm -rf` / `git push -f` / 删库 / 越界写入）必须先请求人工明确确认。
+- **单项四要素 UAT 自愈**：可配合 `sansheng html` 网页看板或 `sansheng_uat_gate` 逐项核验。遇缺陷原地写复现用例 ➔ 修复 ➔ 复测，通过后沉淀经验。
 
 ## 5. 快捷交互语法支持
 - `c` / `r` ➔ 全自动执行任务与测试

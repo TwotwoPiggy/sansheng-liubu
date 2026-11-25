@@ -35,8 +35,8 @@ export function createTaskStatusTool(config) {
         },
       ],
     },
-    async execute() {
-      const cwd = process.cwd();
+    async execute(args = {}) {
+      const cwd = args.cwd || config?.cwd || process.cwd();
       const shangshu = new Shangshu(cwd);
 
       if (shangshu.isShardedMode()) {

@@ -9,11 +9,23 @@
       "presentation": { "reveal": "silent" }
     },
     {
-      "label": "三省六部: 运行质量门禁测试 (dotnet test)",
+      "label": "三省六部: 门下省计划覆盖率审计 (sansheng audit-plan)",
       "type": "shell",
-      "command": "dotnet test --verbosity quiet",
-      "group": "test",
-      "problemMatcher": "$msCompile"
+      "command": "sansheng audit-plan",
+      "problemMatcher": []
+    },
+    {
+      "label": "三省六部: 查看任务看板状态 (sansheng status)",
+      "type": "shell",
+      "command": "sansheng status",
+      "problemMatcher": []
+    },
+    {
+      "label": "三省六部: 启动网页 UAT 热同步看板 (sansheng html --serve)",
+      "type": "shell",
+      "command": "sansheng html --serve",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
     },
     {
       "label": "三省六部: 启动 UAT 验收与自愈 (sansheng uat)",
@@ -23,9 +35,9 @@
       "presentation": { "reveal": "always", "focus": true }
     },
     {
-      "label": "三省六部: 查看任务看板状态 (sansheng status)",
+      "label": "三省六部: 检查并更新引擎与 Copilot 套件 (sansheng update)",
       "type": "shell",
-      "command": "sansheng status",
+      "command": "sansheng update",
       "problemMatcher": []
     }
   ]

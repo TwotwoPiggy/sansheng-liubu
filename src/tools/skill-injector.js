@@ -11,6 +11,8 @@ const DEFAULT_PACKAGE_ROOT = path.resolve(fileURLToPath(new URL('../..', import.
 export function getRuntimeSkillTargets(homeDir = os.homedir()) {
   return [
     { id: 'antigravity', name: 'Antigravity', detectDir: path.join(homeDir, '.gemini', 'antigravity'), skillsDir: path.join(homeDir, '.gemini', 'antigravity', 'skills') },
+    { id: 'copilot', name: 'VS Code Copilot', detectDir: path.join(homeDir, '.copilot'), skillsDir: path.join(homeDir, '.copilot', 'skills') },
+    { id: 'agents', name: 'Agent Skills (.agents)', detectDir: path.join(homeDir, '.agents'), skillsDir: path.join(homeDir, '.agents', 'skills') },
     { id: 'gemini', name: 'Gemini CLI', detectDir: path.join(homeDir, '.gemini', 'skills'), skillsDir: path.join(homeDir, '.gemini', 'skills') },
     { id: 'claude', name: 'Claude Code', detectDir: path.join(homeDir, '.claude'), skillsDir: path.join(homeDir, '.claude', 'skills') },
     { id: 'cursor', name: 'Cursor', detectDir: path.join(homeDir, '.cursor'), skillsDir: path.join(homeDir, '.cursor', 'skills') },
@@ -63,6 +65,91 @@ export function collectBuiltinSkills(packageRoot = DEFAULT_PACKAGE_ROOT) {
 }
 
 /**
+ * 将技能集合幂等同步到指定的 skills 目录（带软链接保护）
+ */
+function syncSkillsIntoDir(skillsDir, builtinSkills, { runtimeId = 'workspace', dryRun = false } = {}) {
+  const updatedFiles = [];
+  const unchangedFiles = [];
+  const skippedSymlinks = [];
+  const errors = [];
+  let touched = false;
+
+  for (const skill of builtinSkills) {
+    const destSkillDir = path.join(skillsDir, skill.name);
+    const destSkillFile = path.join(destSkillDir, 'SKILL.md');
+
+    try {
+      // 保护软链接目录/文件，避免破坏用户手工维护的符号链接
+      if (fs.existsSync(destSkillDir) && fs.lstatSync(destSkillDir).isSymbolicLink()) {
+        skippedSymlinks.push(destSkillDir);
+        continue;
+      }
+      if (fs.existsSync(destSkillFile) && fs.lstatSync(destSkillFile).isSymbolicLink()) {
+        skippedSymlinks.push(destSkillFile);
+        continue;
+      }
+
+      const existing = fs.existsSync(destSkillFile)
+        ? fs.readFileSync(destSkillFile, 'utf-8')
+        : null;
+
+      if (existing === skill.content) {
+        unchangedFiles.push(destSkillFile);
+        touched = true;
+        continue;
+      }
+
+      if (!dryRun) {
+        if (!fs.existsSync(destSkillDir)) {
+          fs.mkdirSync(destSkillDir, { recursive: true });
+        }
+        fs.writeFileSync(destSkillFile, skill.content, 'utf-8');
+      }
+
+      updatedFiles.push(destSkillFile);
+      touched = true;
+    } catch (err) {
+      errors.push({ runtime: runtimeId, skill: skill.name, path: destSkillFile, error: err.message });
+    }
+  }
+
+  return {
+    touched,
+    updatedFiles,
+    unchangedFiles,
+    skippedSymlinks,
+    errors,
+  };
+}
+
+/**
+ * 将全套内置 Agent Skills 同步至当前工作区的 .github/skills/（VS Code Copilot 原生规范）
+ * @param {string} [cwd]
+ * @param {object} [options]
+ */
+export function syncWorkspaceSkills(cwd = process.cwd(), options = {}) {
+  const {
+    packageRoot = DEFAULT_PACKAGE_ROOT,
+    targetRelDir = path.join('.github', 'skills'),
+    dryRun = false,
+  } = options;
+
+  const builtinSkills = collectBuiltinSkills(packageRoot);
+  const skillsDir = path.isAbsolute(targetRelDir) ? targetRelDir : path.join(cwd, targetRelDir);
+  const res = syncSkillsIntoDir(skillsDir, builtinSkills, { runtimeId: 'workspace-copilot', dryRun });
+
+  return {
+    success: res.errors.length === 0,
+    skillsDir,
+    skills: builtinSkills.map(s => s.name),
+    updatedFiles: res.updatedFiles,
+    unchangedFiles: res.unchangedFiles,
+    skippedSymlinks: res.skippedSymlinks,
+    errors: res.errors,
+  };
+}
+
+/**
  * 自动探测当前主机已安装的 AI 运行时，并将三省六部全套 Skills 无损重注入到各运行时
  * @param {object} [options]
  * @param {string} [options.packageRoot] 技能源码包根目录
@@ -100,55 +187,22 @@ export function syncGlobalSkills(options = {}) {
   const errors = [];
 
   for (const target of matchedTargets) {
-    let runtimeTouched = false;
-    let runtimeUpdatedCount = 0;
+    const res = syncSkillsIntoDir(target.skillsDir, builtinSkills, {
+      runtimeId: target.id,
+      dryRun,
+    });
 
-    for (const skill of builtinSkills) {
-      const destSkillDir = path.join(target.skillsDir, skill.name);
-      const destSkillFile = path.join(destSkillDir, 'SKILL.md');
+    updatedFiles.push(...res.updatedFiles);
+    unchangedFiles.push(...res.unchangedFiles);
+    skippedSymlinks.push(...res.skippedSymlinks);
+    errors.push(...res.errors);
 
-      try {
-        // 保护软链接目录/文件，避免破坏用户手工维护的符号链接
-        if (fs.existsSync(destSkillDir) && fs.lstatSync(destSkillDir).isSymbolicLink()) {
-          skippedSymlinks.push(destSkillDir);
-          continue;
-        }
-        if (fs.existsSync(destSkillFile) && fs.lstatSync(destSkillFile).isSymbolicLink()) {
-          skippedSymlinks.push(destSkillFile);
-          continue;
-        }
-
-        const existing = fs.existsSync(destSkillFile)
-          ? fs.readFileSync(destSkillFile, 'utf-8')
-          : null;
-
-        if (existing === skill.content) {
-          unchangedFiles.push(destSkillFile);
-          runtimeTouched = true;
-          continue;
-        }
-
-        if (!dryRun) {
-          if (!fs.existsSync(destSkillDir)) {
-            fs.mkdirSync(destSkillDir, { recursive: true });
-          }
-          fs.writeFileSync(destSkillFile, skill.content, 'utf-8');
-        }
-
-        updatedFiles.push(destSkillFile);
-        runtimeTouched = true;
-        runtimeUpdatedCount++;
-      } catch (err) {
-        errors.push({ runtime: target.id, skill: skill.name, path: destSkillFile, error: err.message });
-      }
-    }
-
-    if (runtimeTouched) {
+    if (res.touched) {
       updatedRuntimes.push({
         id: target.id,
         name: target.name,
         skillsDir: target.skillsDir,
-        updatedCount: runtimeUpdatedCount,
+        updatedCount: res.updatedFiles.length,
         totalSkills: builtinSkills.length,
       });
     }

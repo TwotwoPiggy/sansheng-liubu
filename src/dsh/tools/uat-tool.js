@@ -54,8 +54,8 @@ export function createUatGateTool(config) {
         },
       ],
     },
-    async execute(args) {
-      const cwd = process.cwd();
+    async execute(args = {}) {
+      const cwd = args.cwd || config?.cwd || process.cwd();
       const taskPath = findActiveTaskOrPlanPath(cwd, args.taskPath || args.taskId);
 
       if (!taskPath) {

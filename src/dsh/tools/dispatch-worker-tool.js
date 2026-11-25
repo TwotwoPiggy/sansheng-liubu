@@ -110,7 +110,7 @@ export function createDispatchWorkerTool(ctx, config) {
           max_retries: config?.escalationMaxRetries ?? 2,
         },
       };
-      const adapter = new SubagentAdapter(adapterConfig, { cwd: config?.cwd || process.cwd() });
+      const adapter = new SubagentAdapter(adapterConfig, { cwd: args.cwd || config?.cwd || process.cwd() });
 
       // status 为纯只读观测，免高危审批
       if (action === 'status') {

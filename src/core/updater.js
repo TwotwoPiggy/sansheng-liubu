@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { injectVSCodeEnhancements } from '../tools/vscode-injector.js';
+import { injectVSCodeEnhancements, syncGlobalVSCodeCopilot } from '../tools/vscode-injector.js';
 import { RuleSync } from '../tools/rule-sync.js';
 import { checkYongleInstalled } from '../tools/yongle-installer.js';
 import { syncGlobalSkills } from '../tools/skill-injector.js';
@@ -599,7 +599,7 @@ export function parseUpdateOptions(rawOptions = {}) {
 /**
  * 同步当前工作区配置与 IDE 规则
  */
-function syncCurrentWorkspace(cwd, log, warn, silent = false) {
+function syncCurrentWorkspace(cwd, log, warn, silent = false, syncOpts = {}) {
   const sanshengDir = path.join(cwd, '.sansheng');
   if (!fs.existsSync(sanshengDir)) fs.mkdirSync(sanshengDir, { recursive: true });
 
@@ -671,14 +671,18 @@ function syncCurrentWorkspace(cwd, log, warn, silent = false) {
 
   // 刷新 VS Code 与 Copilot 规则
   try {
-    runQuietly(() => injectVSCodeEnhancements(cwd));
+    runQuietly(() => injectVSCodeEnhancements(cwd, {
+      packageRoot: syncOpts.packageRoot,
+      homeDir: syncOpts.homeDir,
+      silent,
+    }));
   } catch (e) {
     warn(`   ➔ ⚠️ 注入 VS Code 增强套件失败: ${e.message}`);
   }
 
   // 自动检测并同步外部 IDE 规则 (Trae / CatPaw / Qoder / Cursor)
   try {
-    runQuietly(() => RuleSync.syncAll(cwd));
+    runQuietly(() => RuleSync.syncAll(cwd, { homeDir: syncOpts.homeDir }));
   } catch (e) {
     warn(`   ➔ ⚠️ 同步 IDE 规则失败: ${e.message}`);
   }
@@ -747,17 +751,38 @@ export async function runUpdate(rawOptions = {}) {
     return checkSummary;
   }
 
-  // 2. 自动重注入全局 AI 运行时 Skills (Antigravity / Claude / Cursor / Trae / Windsurf 等)
+  // 2. 自动重注入全局 AI 运行时 Skills (Antigravity / VS Code Copilot / Claude / Cursor / Trae 等)
   let skillsResult = null;
+  let copilotGlobalResult = null;
+  const skillSourceRoot = pkgResult.resolvedPackageRoot || packageRoot;
   if (!options.skipSkills) {
     log(`\n🧠 [全局 AI 运行时 Skills 自动重注入]`);
-    const skillSourceRoot = pkgResult.resolvedPackageRoot || packageRoot;
     skillsResult = syncGlobalSkills({
       packageRoot: skillSourceRoot,
       homeDir: options.homeDir,
       runtimes: options.runtimes,
       silent,
     });
+
+    // 若本机已检测到 VS Code Copilot 运行时，一并刷新全局 Custom Agents 与 Prompts
+    if (skillsResult?.detectedRuntimes?.includes('copilot')) {
+      try {
+        copilotGlobalResult = syncGlobalVSCodeCopilot({
+          packageRoot: skillSourceRoot,
+          homeDir: options.homeDir,
+          includeSkills: false,
+          includeAgents: true,
+          includePrompts: true,
+          includeGlobalMcp: false,
+          silent: true,
+        });
+        if (!silent && copilotGlobalResult.agents.updatedFiles.length > 0) {
+          log(`   ➔ 🤖 全局 VS Code Copilot Custom Agents 已同步: ${copilotGlobalResult.agents.dir}`);
+        }
+      } catch (e) {
+        warn(`   ➔ ⚠️ 同步全局 VS Code Copilot Agents 失败: ${e.message}`);
+      }
+    }
   }
 
   // 3. 按需无损同步当前工作区配置与 IDE 规则（避免在非项目目录污染磁盘）
@@ -767,7 +792,10 @@ export async function runUpdate(rawOptions = {}) {
 
   if (shouldSyncWorkspace) {
     log(`\n📂 [工作区配置与 IDE 规则自愈同步]`);
-    syncCurrentWorkspace(cwd, log, warn, silent);
+    syncCurrentWorkspace(cwd, log, warn, silent, {
+      packageRoot: skillSourceRoot,
+      homeDir: options.homeDir,
+    });
     workspaceSynced = true;
   } else if (!options.skipWorkspace) {
     log(`\n📂 [工作区同步] 当前目录未检测到 .sansheng/，已跳过工作区文件注入（如需初始化请运行 sansheng init 或加 --sync-workspace）。`);
@@ -794,6 +822,7 @@ export async function runUpdate(rawOptions = {}) {
     currentVersion: afterVersion,
     pkgResult,
     skillsResult,
+    copilotGlobalResult,
     workspaceSynced,
     yongleActive,
   };

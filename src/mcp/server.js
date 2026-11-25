@@ -4,23 +4,59 @@ import { getLocalVersion } from '../core/updater.js';
 
 /**
  * 将 DSH 工具的 parameters 定义转换为标准 MCP JSON Schema (inputSchema)
+ * 同时兼容扁平字段映射与标准 JSON Schema ({ type: 'object', properties: ... })
  */
 function toJsonSchema(parameters = {}) {
   const properties = {};
   const required = [];
 
-  for (const [key, def] of Object.entries(parameters || {})) {
+  const isStandardJsonSchema = Boolean(
+    parameters
+    && parameters.type === 'object'
+    && parameters.properties
+    && typeof parameters.properties === 'object'
+    && !Array.isArray(parameters.properties)
+  );
+
+  const sourceEntries = isStandardJsonSchema
+    ? Object.entries(parameters.properties)
+    : Object.entries(parameters || {});
+
+  if (isStandardJsonSchema && Array.isArray(parameters.required)) {
+    for (const reqKey of parameters.required) {
+      if (typeof reqKey === 'string' && !required.includes(reqKey)) {
+        required.push(reqKey);
+      }
+    }
+  }
+
+  for (const [key, def] of sourceEntries) {
+    if (!def || typeof def !== 'object') continue;
+    const type = def.type === 'array' ? 'array' : (def.type || 'string');
     const prop = {
-      type: def.type === 'array' ? 'array' : (def.type || 'string'),
+      type,
       description: def.description || '',
     };
-    if (def.items) prop.items = def.items;
+    if (type === 'array') {
+      prop.items = def.items || { type: 'string' };
+    } else if (def.items) {
+      prop.items = def.items;
+    }
+    if (def.enum) prop.enum = def.enum;
     if (def.default !== undefined) prop.default = def.default;
     properties[key] = prop;
 
-    if (def.required === true) {
+    if (def.required === true && !required.includes(key)) {
       required.push(key);
     }
+  }
+
+  // 允许全局挂载 MCP / 多根工作区客户端按需透传目标项目 cwd
+  if (!properties.cwd) {
+    properties.cwd = {
+      type: 'string',
+      description: '可选：目标工作区根目录绝对路径（未提供时默认当前工作目录）',
+    };
   }
 
   return {

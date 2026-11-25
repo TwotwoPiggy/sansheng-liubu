@@ -6,8 +6,9 @@ const IDE_REGISTRY = [
   { type: 'catpaw', aliases: ['catpaw', 'catpawai'], dir: '.catpaw', files: ['rules.md', 'system_prompt.md'], subDirs: [{ path: 'rules' }, { path: 'prompts', isPrompt: true }], exportPath: '.catpaw/rules.md', name: 'CatPaw' },
   { type: 'qoder', aliases: ['qoder'], dir: '.qoder', files: ['rules.md', 'guidelines.md'], subDirs: [{ path: 'rules' }], rootFile: '.qoderrules', exportPath: '.qoder/rules.md', name: 'Qoder' },
   { type: 'cursor', aliases: ['cursor'], rootFile: '.cursorrules', dir: '.cursor', subDirs: [{ path: 'rules', exts: ['.mdc', '.md'] }], exportPath: '.cursorrules', name: 'Cursor' },
-  { type: 'claude', rootFile: 'CLAUDE.md' },
-  { type: 'windsurf', rootFile: '.windsurfrules' },
+  { type: 'claude', aliases: ['claude'], rootFile: 'CLAUDE.md', exportPath: 'CLAUDE.md', name: 'Claude Code' },
+  { type: 'windsurf', aliases: ['windsurf'], rootFile: '.windsurfrules', exportPath: '.windsurfrules', name: 'Windsurf' },
+  { type: 'copilot', aliases: ['copilot', 'vscode', 'vscode-copilot'], exportPath: '.github/copilot-instructions.md', name: 'VS Code Copilot' },
 ];
 
 /**
@@ -98,7 +99,7 @@ export class RuleSync {
     const name = frontmatter.name || frontmatter.title || baseName.replace(/^[0-9]+[-_]/, '');
     const description = frontmatter.description || `从 ${type.toUpperCase()} 自动同步的规则: ${name}`;
     const globs = frontmatter.globs || frontmatter.applyTo || frontmatter.pattern || '';
-    const isPrompt = frontmatter.isPrompt || filePath.includes('prompts');
+    const isPrompt = Boolean(frontmatter.isPrompt) || filePath.split(path.sep).includes('prompts');
     const isAlwaysApply = !globs && !isPrompt;
 
     return {
@@ -107,6 +108,7 @@ export class RuleSync {
       name,
       description,
       globs,
+      isPrompt,
       isAlwaysApply,
       frontmatter,
       body: cleanedBody
@@ -115,15 +117,19 @@ export class RuleSync {
 
   /**
    * 执行全量同步 (将所有发现的源规则标准化并注入 VS Code Copilot & .sansheng/rules/)
+   * - 常驻全局规则 ➔ .github/copilot-instructions.md
+   * - 文件作用域规则 (globs/applyTo) ➔ .github/instructions/<name>.instructions.md
+   * - 手动斜杠模板 (prompts) ➔ .github/prompts/<name>.prompt.md
    */
-  static syncAll(cwd = process.cwd()) {
+  static syncAll(cwd = process.cwd(), options = {}) {
+    const { includeGlobalPrompts = true, appDataDir, homeDir } = options;
     const detected = this.detectSources(cwd);
     const rulesDir = path.join(cwd, '.sansheng', 'rules');
     if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
 
     if (detected.length === 0) {
       console.log(`ℹ️ 当前工作区未检测到 Trae / CatPaw / Qoder / Cursor 等第三方规则文件。`);
-      return { totalDetected: 0, globalRules: 0, promptRules: 0 };
+      return { totalDetected: 0, globalRules: 0, instructionRules: 0, promptRules: 0 };
     }
 
     console.log(`🔍 [多 IDE 规则嗅探] 检测到 ${detected.length} 个规则来源:`);
@@ -131,8 +137,9 @@ export class RuleSync {
 
     const parsedRules = detected.map(d => this.parseRuleFile(d.path, d.type));
 
-    // 1. 归类为全局常驻规则 vs 场景 Prompt 规则
+    // 1. 归类为：全局常驻规则 vs 条件自动生效 Instructions (applyTo) vs 手动斜杠 Prompt
     const globalSnippets = [];
+    const instructionRules = [];
     const promptRules = [];
 
     parsedRules.forEach(r => {
@@ -141,10 +148,12 @@ export class RuleSync {
       const backupPath = path.join(rulesDir, `${safeName}.md`);
       fs.writeFileSync(backupPath, `# ${r.name} (${r.sourceType.toUpperCase()})\n> ${r.description}\n\n${r.body}`, 'utf-8');
 
-      if (r.isAlwaysApply && !r.globs) {
-        globalSnippets.push(`\n### 📌 [${r.sourceType.toUpperCase()}] ${r.name}\n${r.body}`);
-      } else {
+      if (r.isPrompt) {
         promptRules.push(r);
+      } else if (r.globs) {
+        instructionRules.push(r);
+      } else {
+        globalSnippets.push(`\n### 📌 [${r.sourceType.toUpperCase()}] ${r.name}\n${r.body}`);
       }
     });
 
@@ -153,75 +162,114 @@ export class RuleSync {
     if (!fs.existsSync(githubDir)) fs.mkdirSync(githubDir, { recursive: true });
     const copilotInstructionsPath = path.join(githubDir, 'copilot-instructions.md');
 
-    if (globalSnippets.length > 0 && fs.existsSync(copilotInstructionsPath)) {
-      let currentInst = fs.readFileSync(copilotInstructionsPath, 'utf-8');
+    if (globalSnippets.length > 0) {
+      let currentInst = fs.existsSync(copilotInstructionsPath)
+        ? fs.readFileSync(copilotInstructionsPath, 'utf-8')
+        : '';
       const marker = '\n\n## 🔄 [多 AI IDE 外部同步规则集 (Auto-Synced)]';
       if (currentInst.includes(marker)) {
         currentInst = currentInst.split(marker)[0];
+      } else if (currentInst.includes('## 🔄 [多 AI IDE 外部同步规则集 (Auto-Synced)]')) {
+        currentInst = currentInst.split('## 🔄 [多 AI IDE 外部同步规则集 (Auto-Synced)]')[0].trimEnd();
       }
-      const updatedInst = currentInst + marker + '\n' + globalSnippets.join('\n') + '\n';
+      const prefix = currentInst.trim() ? currentInst.trimEnd() + marker : '## 🔄 [多 AI IDE 外部同步规则集 (Auto-Synced)]';
+      const updatedInst = prefix + '\n' + globalSnippets.join('\n') + '\n';
       fs.writeFileSync(copilotInstructionsPath, updatedInst, 'utf-8');
       console.log(`✅ 已将 ${globalSnippets.length} 条全局规则追加合并至: .github/copilot-instructions.md`);
     }
 
-    // 3. 将场景/带作用域规则生成为 VS Code Prompt 文件
-    const ghPromptsDir = path.join(githubDir, 'prompts');
-    if (!fs.existsSync(ghPromptsDir)) fs.mkdirSync(ghPromptsDir, { recursive: true });
+    // 3. 将带 globs / applyTo 的作用域规则生成为 VS Code Copilot 原生 .github/instructions/*.instructions.md
+    if (instructionRules.length > 0) {
+      const ghInstructionsDir = path.join(githubDir, 'instructions');
+      if (!fs.existsSync(ghInstructionsDir)) fs.mkdirSync(ghInstructionsDir, { recursive: true });
 
-    const vscodeDir = path.join(cwd, '.vscode');
-    if (!fs.existsSync(vscodeDir)) fs.mkdirSync(vscodeDir, { recursive: true });
-    const vsPromptsDir = path.join(vscodeDir, 'prompts');
-    if (!fs.existsSync(vsPromptsDir)) fs.mkdirSync(vsPromptsDir, { recursive: true });
-
-    // 用户全局目录
-    let userPromptsDir = null;
-    if (process.platform === 'win32' && process.env.APPDATA) {
-      userPromptsDir = path.join(process.env.APPDATA, 'Code', 'User', 'prompts');
-    } else if (process.platform === 'darwin' && process.env.HOME) {
-      userPromptsDir = path.join(process.env.HOME, 'Library', 'Application Support', 'Code', 'User', 'prompts');
-    } else if (process.env.HOME) {
-      userPromptsDir = path.join(process.env.HOME, '.config', 'Code', 'User', 'prompts');
+      instructionRules.forEach(r => {
+        const safeName = r.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+        const instLines = [
+          '---',
+          `name: ${safeName}`,
+          `description: ${JSON.stringify(r.description)}`,
+          `applyTo: ${JSON.stringify(r.globs)}`,
+          '---',
+          '',
+          r.body,
+          '',
+        ];
+        const destPath = path.join(ghInstructionsDir, `${safeName}.instructions.md`);
+        fs.writeFileSync(destPath, instLines.join('\n'), 'utf-8');
+        console.log(`   ➔ 已转译生成条件指令: .github/instructions/${safeName}.instructions.md (applyTo: ${r.globs})`);
+      });
     }
-    if (userPromptsDir && !fs.existsSync(userPromptsDir)) {
-      try { fs.mkdirSync(userPromptsDir, { recursive: true }); } catch (_) {}
+
+    // 4. 将手动 Prompt 规则生成为 VS Code Prompt 文件 (.github/prompts/*.prompt.md)
+    if (promptRules.length > 0) {
+      const ghPromptsDir = path.join(githubDir, 'prompts');
+      if (!fs.existsSync(ghPromptsDir)) fs.mkdirSync(ghPromptsDir, { recursive: true });
+
+      const vscodeDir = path.join(cwd, '.vscode');
+      if (!fs.existsSync(vscodeDir)) fs.mkdirSync(vscodeDir, { recursive: true });
+      const vsPromptsDir = path.join(vscodeDir, 'prompts');
+      if (!fs.existsSync(vsPromptsDir)) fs.mkdirSync(vsPromptsDir, { recursive: true });
+
+      let userPromptsDir = null;
+      if (includeGlobalPrompts) {
+        if (process.platform === 'win32') {
+          const baseAppData = appDataDir || (homeDir ? path.join(homeDir, 'AppData', 'Roaming') : process.env.APPDATA);
+          if (baseAppData) userPromptsDir = path.join(baseAppData, 'Code', 'User', 'prompts');
+        } else if (process.platform === 'darwin') {
+          const baseHome = homeDir || process.env.HOME;
+          if (baseHome) userPromptsDir = path.join(baseHome, 'Library', 'Application Support', 'Code', 'User', 'prompts');
+        } else {
+          const baseHome = homeDir || process.env.HOME;
+          if (baseHome) userPromptsDir = path.join(baseHome, '.config', 'Code', 'User', 'prompts');
+        }
+        if (userPromptsDir && !fs.existsSync(userPromptsDir)) {
+          try { fs.mkdirSync(userPromptsDir, { recursive: true }); } catch (_) {}
+        }
+      }
+
+      promptRules.forEach(r => {
+        const safeName = r.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+        const frontmatterLines = [
+          '---',
+          `name: ${safeName}`,
+          `agent: 'agent'`,
+          `description: ${JSON.stringify(r.description)}`,
+          '---',
+          '',
+          r.body,
+          '',
+        ];
+
+        const promptContent = frontmatterLines.join('\n');
+        const ghPath = path.join(ghPromptsDir, `${safeName}.prompt.md`);
+        const vsPath = path.join(vsPromptsDir, `${safeName}.prompt.md`);
+
+        fs.writeFileSync(ghPath, promptContent, 'utf-8');
+        fs.writeFileSync(vsPath, promptContent, 'utf-8');
+
+        if (userPromptsDir && fs.existsSync(userPromptsDir)) {
+          try {
+            fs.writeFileSync(path.join(userPromptsDir, `${safeName}.prompt.md`), promptContent, 'utf-8');
+          } catch (_) {}
+        }
+
+        console.log(`   ➔ 已转译生成 Prompt 模板: /${safeName}`);
+      });
     }
-
-    promptRules.forEach(r => {
-      const safeName = r.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-      const frontmatterLines = [
-        '---',
-        `name: ${safeName}`,
-        `description: ${r.description}`
-      ];
-      if (r.globs) {
-        frontmatterLines.push(`applyTo: "${r.globs}"`);
-      }
-      frontmatterLines.push('---', '', r.body, '');
-
-      const promptContent = frontmatterLines.join('\n');
-      const ghPath = path.join(ghPromptsDir, `${safeName}.prompt.md`);
-      const vsPath = path.join(vsPromptsDir, `${safeName}.prompt.md`);
-
-      fs.writeFileSync(ghPath, promptContent, 'utf-8');
-      fs.writeFileSync(vsPath, promptContent, 'utf-8');
-
-      if (userPromptsDir && fs.existsSync(userPromptsDir)) {
-        try {
-          fs.writeFileSync(path.join(userPromptsDir, `${safeName}.prompt.md`), promptContent, 'utf-8');
-        } catch (_) {}
-      }
-
-      console.log(`   ➔ 已转译生成 Prompt 模板: /${safeName} (作用域: ${r.globs || '全局'})`);
-    });
 
     console.log(`\n🎉 [规则同步完成]`);
     console.log(`   • 集中归档: .sansheng/rules/ (${parsedRules.length} 个规则)`);
-    console.log(`   • 全局注入: .github/copilot-instructions.md (${globalSnippets.length} 项)`);
-    console.log(`   • 斜杠指令: /sansheng & ${promptRules.map(p => '/' + p.name.toLowerCase()).join(' ')}`);
+    console.log(`   • 全局指令: .github/copilot-instructions.md (${globalSnippets.length} 项)`);
+    if (instructionRules.length > 0) {
+      console.log(`   • 条件指令: .github/instructions/*.instructions.md (${instructionRules.length} 项)`);
+    }
+    console.log(`   • 斜杠指令: /sansheng${promptRules.length > 0 ? ' & ' + promptRules.map(p => '/' + p.name.toLowerCase()).join(' ') : ''}`);
 
     return {
       totalDetected: detected.length,
       globalRules: globalSnippets.length,
+      instructionRules: instructionRules.length,
       promptRules: promptRules.length
     };
   }
@@ -249,7 +297,7 @@ export class RuleSync {
       fs.writeFileSync(expPath, combinedContent, 'utf-8');
       console.log(`✅ 已成功导出 ${conf.name} 规则: ${conf.exportPath}`);
     } else {
-      console.log(`⚠️ 未知目标 IDE: ${targetIDE} (支持: trae, catpaw, qoder, cursor)`);
+      console.log(`⚠️ 未知目标 IDE: ${targetIDE} (支持: trae, catpaw, qoder, cursor, claude, windsurf, copilot)`);
     }
   }
 }

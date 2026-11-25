@@ -11,7 +11,7 @@ export function createSyncRulesTool(config) {
       exportTarget: {
         type: 'string',
         required: false,
-        description: '可选：反向导出至指定第三方 IDE 规则格式 (如 "trae", "catpaw", "qoder", "cursor")',
+        description: '可选：反向导出至指定第三方 IDE 规则格式 (如 "trae", "catpaw", "qoder", "cursor", "copilot")',
       },
     },
     output: {
@@ -21,6 +21,7 @@ export function createSyncRulesTool(config) {
           success: { type: 'boolean' },
           totalDetected: { type: 'number' },
           globalRules: { type: 'number' },
+          instructionRules: { type: 'number' },
           promptRules: { type: 'number' },
           message: { type: 'string' },
         },
@@ -32,8 +33,8 @@ export function createSyncRulesTool(config) {
         },
       ],
     },
-    async execute(args) {
-      const cwd = process.cwd();
+    async execute(args = {}) {
+      const cwd = args.cwd || config?.cwd || process.cwd();
 
       if (args.exportTarget) {
         RuleSync.exportToIDE(args.exportTarget, cwd);
@@ -41,6 +42,7 @@ export function createSyncRulesTool(config) {
           success: true,
           totalDetected: 0,
           globalRules: 0,
+          instructionRules: 0,
           promptRules: 0,
           message: `已成功将规则反向导出至目标 IDE: ${args.exportTarget}`,
         };
@@ -51,8 +53,9 @@ export function createSyncRulesTool(config) {
         success: true,
         totalDetected: res.totalDetected,
         globalRules: res.globalRules,
+        instructionRules: res.instructionRules || 0,
         promptRules: res.promptRules,
-        message: `检测到 ${res.totalDetected} 个外部规则源，已将 ${res.globalRules} 条全局规则与 ${res.promptRules} 条 Prompt 规则归档并同步。`,
+        message: `检测到 ${res.totalDetected} 个外部规则源，已将 ${res.globalRules} 条全局规则、${res.instructionRules || 0} 条条件指令与 ${res.promptRules} 条 Prompt 规则归档并同步。`,
       };
     },
   });

@@ -52,16 +52,18 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
   - 🟠 L3改写 (源码修改)：自动执行 + Git保护
   - 🔴 L4高危 (rm -rf/git push -f/删库/越界路径)：强制人工确认
 
-## 跨平台原生工具与 CLI 扩展 (DSH + Antigravity 双模兼容)
+## 跨平台原生工具与 CLI 扩展 (VS Code Copilot + DSH + Antigravity 多模兼容)
+- **VS Code Copilot 原生全套集成**：支持 Custom Agents（`.github/agents/` & `~/.copilot/agents/`：`@sansheng` / `@zhongshu` / `@menxia` / `@shangshu`，内置 Handoffs 一键流转）、Agent Skills（`.github/skills/` & `~/.copilot/skills/`）、Custom Instructions（`.github/copilot-instructions.md` & `.github/instructions/*.instructions.md`）、Prompt Files（`agent: 'agent'`）与标准 `servers` 格式 `.vscode/mcp.json` / `Code/User/mcp.json` / `~/.copilot/mcp-config.json`。
+  - CLI 指令：`sansheng copilot setup [--global-only|--workspace-only]` / `sansheng copilot status [--json]`
 - **Inline & Spill 链式召回**：支持按 ID（`TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx` / `ARCHIVE`）按需分页展开被 Spill 的上下文与下一跳关联指针。
   - DSH / MCP 工具：`sansheng_recall`
   - CLI 指令：`sansheng recall <id> [--offset 0] [--limit 2000] [--json]`
 - **全双工异步工兵**：支持 `start` / `status` / `stop` 非阻塞后台执行与状态持久化（`.sansheng/jobs/`）。
   - DSH / MCP 工具：`sansheng_dispatch_worker`（`action: "start" | "status" | "stop" | "sync"`）
   - CLI 指令：`sansheng worker start|status|stop`
-- **一键升级与多运行时技能同步**：自动识别 Git 仓库 / npm 全局包模式，支持指定版本/Tag、失败回滚，并自动重注入 Antigravity/Claude/Cursor/Trae 等全局 AI 运行时 Skills。
+- **一键升级与多运行时技能同步**：自动识别 Git 仓库 / npm 全局包模式，支持指定版本/Tag、失败回滚，并自动重注入 Antigravity/VS Code Copilot/Claude/Cursor/Trae 等全局 AI 运行时 Skills。
   - DSH / MCP 工具：`sansheng_update`（`action: "check" | "update" | "sync-skills"`）
   - CLI 指令：`sansheng update [version] [--check] [--skip-npm] [--force] [--json]`
-- **Antigravity MCP 挂载**：直接运行 `sansheng mcp` 或 `sansheng-mcp`（stdio MCP Server），与 DSH 同源共享全部 9 个核心工具。
+- **原生 stdio MCP Server 挂载**：直接运行 `sansheng mcp [--cwd <path>]` 或 `sansheng-mcp`，为 VS Code Copilot / Antigravity / Claude 等客户端同源暴露全部 9 个核心工具。
 
 ✅ 引导 AI 注意：在 ALIGN 阶段请务必参考完整规范白皮书 `LITE_DEV_WORKFLOW_SPEC.md`

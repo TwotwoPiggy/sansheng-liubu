@@ -51,8 +51,19 @@ export { SubagentAdapter } from './tools/subagent-adapter.js';
 export { YongleBridge } from './tools/yongle-bridge.js';
 export { checkYongleInstalled, promptAndInstallYongle } from './tools/yongle-installer.js';
 export { CBMBridge } from './tools/cbm-bridge.js';
-export { injectVSCodeEnhancements } from './tools/vscode-injector.js';
-export { syncGlobalSkills, collectBuiltinSkills, getRuntimeSkillTargets } from './tools/skill-injector.js';
+export {
+  injectVSCodeEnhancements,
+  syncGlobalVSCodeCopilot,
+  inspectVSCodeCopilotStatus,
+  collectBuiltinAgents,
+  parseJsonc,
+} from './tools/vscode-injector.js';
+export {
+  syncGlobalSkills,
+  syncWorkspaceSkills,
+  collectBuiltinSkills,
+  getRuntimeSkillTargets,
+} from './tools/skill-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
 export { createAuditPlanTool } from './dsh/tools/audit-plan-tool.js';
 export { createUpdateTool } from './dsh/tools/update-tool.js';

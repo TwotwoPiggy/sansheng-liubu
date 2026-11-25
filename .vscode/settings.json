@@ -1,3 +1,4 @@
 {
-  "chat.promptFiles": true
+  "chat.promptFiles": true,
+  "chat.useAgentSkills": true
 }

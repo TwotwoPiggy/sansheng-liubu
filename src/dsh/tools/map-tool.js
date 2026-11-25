@@ -57,8 +57,8 @@ export function createCodebaseMapTool(config) {
         },
       ],
     },
-    async execute(args) {
-      const cwd = process.cwd();
+    async execute(args = {}) {
+      const cwd = args.cwd || config?.cwd || process.cwd();
       const maxDepth = args.maxDepth ?? 4;
       const saveToFile = args.saveToFile ?? true;
       const focus = args.focus;

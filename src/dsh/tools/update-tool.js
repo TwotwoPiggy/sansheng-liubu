@@ -67,7 +67,7 @@ export function createUpdateTool(config = {}) {
     },
     async execute(args = {}) {
       const action = (args.action || 'update').toLowerCase();
-      const cwd = config.cwd || process.cwd();
+      const cwd = args.cwd || config.cwd || process.cwd();
 
       const updateOpts = {
         cwd,

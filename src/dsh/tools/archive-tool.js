@@ -42,8 +42,9 @@ export function createArchiveTool(config) {
         },
       ],
     },
-    async execute(args) {
-      const shangshu = new Shangshu();
+    async execute(args = {}) {
+      const cwd = args.cwd || config?.cwd || process.cwd();
+      const shangshu = new Shangshu(cwd);
       const mode = args.mode || 'milestone';
 
       if (mode === 'task') {

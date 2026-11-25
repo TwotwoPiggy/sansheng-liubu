@@ -60,7 +60,7 @@ export function createRecallTool(config) {
       },
     },
     async execute(args = {}) {
-      const cwd = config?.cwd || process.cwd();
+      const cwd = args.cwd || config?.cwd || process.cwd();
       return recallById(args.id, {
         cwd,
         offset: args.offset ?? 0,
