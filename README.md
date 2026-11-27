@@ -13,11 +13,11 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **0. 环境准备** | 🖥️ 终端 | `sansheng init`<br>`sansheng map`<br>`sansheng update` | `csharp-ls`, `codebase-memory-mcp`<br>`codebase-map.js`, `updater.js` | `.sansheng/config.json`<br>`.sansheng/codebase_map.md`<br>NPM 原地热升级与规则自愈 |
 | **1. 中书省 ALIGN** | 💬 IDE 聊天框 | 直接输入需求文本，或：<br>`/sansheng [需求内容]` | **Skill**: `yongle-search` / `yongle-hybrid-search.js`<br>**Tools**: `codebase-map.js`, `tree-sitter` | 四要素微引用质询<br>`[REQ-xx]` 原子粉碎清单 (含AC，禁直出Plan)<br>`[RULE-xx]` 边界铁律 |
-| **1.1 决策对齐** | 💬 IDE 聊天框 | `1A 2B 3A` (单选)<br>`A+B` (组合) / `先B后A` (演进)<br>`修改 Q1 为 B` (插话回溯) | 流式 Markdown 解析<br>自动涟漪影响分析 | 决策确定，自动触发门下省 |
-| **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端审计: `sansheng audit-plan`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`, `sansheng_audit_plan`<br>**Gate**: 对抗式反向扫描 / 封驳差额单<br>`dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>显式 `[REQ-xx]` 双向对账<br>门禁放行证书 / 封驳差额单<br>聊天框 3 行 HUD 进度看板 |
-| **3. 六部 RUN** | 💬 IDE 聊天框 | `c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Slice**: 微切片投喂 + 测试断言守门 + Diff对账 | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>Git Diff 行级落地核查 |
-| **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 网页看板: `sansheng html`<br>终端验收: `sansheng uat`<br>卡片判定: `1` 或 `y` (通过)<br>缺陷反馈: `2 <报错/现象描述>` | **看板**: 0 Token 本地自包含 HTML (Chrome/Edge 鼠标点选)<br>**Agent**: 原地补写边界测试 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `.sansheng/uat.html` (网页看板)<br>`[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
-| **5. 归档结项** | 💬 IDE 聊天框 / 🖥️ 终端 | 终端: `sansheng archive`<br>聊天框: `archive` 或 `结项` | **Tools**: `shangshu.js` (`closeMilestone`)<br>**Skill**: `yongle-sync` / `yongle-sync-knowledge.js` | `TASK.md` ➔ `.sansheng/archive/`<br>`ROADMAP.md` 标记完成<br>清理临时文件，仓库 100% 纯净 |
+| **1.1 决策对齐** | 💬 IDE 聊天框 | 弹窗一键点选，或手输：<br>`1A 2B 3A` / `A+B` / `先B后A`<br>`修改 Q1 为 B` (插话回溯) | Markdown 详述 + `ask_question` 点选<br>无弹窗端自动降级 + 涟漪分析 | 决策确定，自动触发门下省 |
+| **2. 门下省 PLAN** | 💬 IDE 聊天框 / 🖥️ 终端 | 自动触发，或输入：<br>`定稿，生成任务板`<br>终端审计: `sansheng audit-plan`<br>终端查看: `sansheng status` | **Tools**: `menxia.js`, `sansheng_audit_plan`<br>**Gate**: 对抗式反向扫描 / 封驳差额单<br>`dotnet test`, `npx vitest` | `.sansheng/TASK.md` (≤150行)<br>显式 `[REQ-xx]` 双向对账<br>门禁放行证书 / 封驳差额单<br>3 行 HUD + 下一步弹窗点选 |
+| **3. 六部 RUN** | 💬 IDE 聊天框 | 弹窗点选下一步，或手输：<br>`c` / `r` (全自动跑完)<br>`s` / `n` (单步执行并汇报) | **Skill**: `invoke_subagent` / `worker.js`<br>**Tools**: `csharp-ls`, `dotnet format`, `biome`<br>**Slice**: 微切片投喂 + 测试断言守门 + Diff对账 | 纯净上下文代码编写<br>单元测试 100% 绿灯<br>Git Diff 行级落地核查 |
+| **4. 交互式 UAT** | 💬 IDE 聊天框 / 🖥️ 终端 | 弹窗点选通过/反馈，或：<br>网页看板: `sansheng html`<br>终端验收: `sansheng uat`<br>快捷键: `1`/`y` 或 `2 <偏差>` | **看板**: 0 Token 本地自包含 HTML (Chrome/Edge 鼠标点选)<br>**Agent**: 弹窗/卡片验收 ➔ 修复 ➔ 复测<br>**Skill**: `yongle-postmortem` (通过后自动归档) | `.sansheng/uat.html` (网页看板)<br>`[UAT-xx]` 逐项打勾<br>避坑心得归档至知识库 |
+| **5. 归档结项** | 💬 IDE 聊天框 / 🖥️ 终端 | 完工弹窗一键归档，或：<br>终端: `sansheng archive`<br>聊天框: `archive` 或 `结项` | **Tools**: `shangshu.js` (`closeMilestone`)<br>**Skill**: `yongle-sync` / `yongle-sync-knowledge.js` | `TASK.md` ➔ `.sansheng/archive/`<br>`ROADMAP.md` 标记完成<br>清理临时文件，仓库 100% 纯净 |
 
 ---
 
@@ -112,7 +112,7 @@ sansheng update --skip-npm
 - **底层自动触发的 Skill 与工具**：
   - **Skill `yongle-search` / `yongle-hybrid-search.js`**：静默检索《永乐大典》中关于 `.NET 8 异步流式导出`、`Vue 3 大数据表格` 的历史避坑经验；
   - **工具 `codebase-map.js`**：结合 `.sansheng/codebase_map.md` 定位改动文件入口；
-  - **AI 行为规范**：严格执行 **§13 非阻塞 Markdown 优先铁律**（严禁弹出阻塞型表单模态窗，使用流式 Markdown）。
+  - **AI 行为规范**：执行 **§13 自适应弹窗优先原则**（先用 Markdown 输出四要素详述，若宿主支持 `ask_question` 则紧跟弹窗供一键点选；不支持弹窗的环境自动降级为纯流式 Markdown）。
 
 - **AI 回显输出格式（四要素微引用）**：
   ```markdown
@@ -244,11 +244,11 @@ sansheng uat
 ```
 命令行逐项展示需求溯源、前置数据、操作步骤与 PRD 预期对照表，支持终端键盘快捷判定与即时自愈。同时每次执行会自动同步刷新 `.sansheng/uat.html`。
 
-#### 3. 方式 C：聊天框单项卡片验收
-AI 依次在聊天窗口弹出当前 UAT 项四要素：
-- **判定通过**：输入 `1` 或 `y` ➔ 打勾 `- [x] UAT-01: Passed`，自动推进下一项；
-- **判定不通过**：输入 `2 <实际现象与PRD预期的偏差>` ➔ AI 对照需求文档原文定位源码偏差，补写复现用例、修复并原地复测；
-- **自愈复盘**：修复通过后自动触发 `yongle-postmortem` 将排查经验沉淀至《永乐大典》。
+#### 3. 方式 C：聊天框弹窗 / 单项卡片验收
+AI 依次在聊天窗口展示当前 UAT 项四要素；若宿主支持 `ask_question` 则同步弹出点选框（免手打指令），不支持弹窗的环境自动降级为快捷输入：
+- **判定通过**：点选 `✅ 通过`（或输入 `1` / `y`）➔ 打勾 `- [x] UAT-01: Passed`，自动推进下一项；
+- **判定不通过**：点选 `❌ 不通过` 并在 `Other` 中填写偏差（或输入 `2 <实际现象与PRD预期的偏差>`）➔ AI 对照需求文档原文定位源码偏差，补写复现用例、修复并原地复测；
+- **自愈复盘**：修复通过后自动触发 `yongle-postmortem` 将排查经验沉淀至《永乐大典》；全部任务与验收结束后弹出归档/收尾确认框。
 
 ---
 
