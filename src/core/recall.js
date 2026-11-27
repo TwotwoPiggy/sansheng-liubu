@@ -2,11 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { Shangshu } from './shangshu.js';
 import { parseUATBlocks } from './uat-runner.js';
+import { findBizDocument, loadAllBizDocuments, loadBizIndex } from './biz-context.js';
 
 const DEFAULT_LIMIT = 2000;
 
 /**
- * 从文本中提取关联的三省六部对象 ID (REQ / TASK / UAT / RULE)
+ * 从文本中提取关联的三省六部对象 ID (BIZ / REQ / TASK / UAT / JOB)
  */
 export function extractRelatedRefs(text = '', excludeId = '') {
   if (!text || typeof text !== 'string') return [];
@@ -15,6 +16,7 @@ export function extractRelatedRefs(text = '', excludeId = '') {
   const refs = [];
 
   const patterns = [
+    { type: 'BIZ', regex: /\bBIZ-\d{8}-\d+\b/gi },
     { type: 'TASK', regex: /\bTASK-\d+(?:[-_][A-Z0-9]+)*/gi },
     { type: 'REQ', regex: /\bREQ-\d+\b/gi },
     { type: 'UAT', regex: /\bUAT-\d+\b/gi },
@@ -85,6 +87,16 @@ function collectSearchableDocs(shangshu) {
     } catch (_) {}
   }
 
+  // 纳入永久业务背景档案，支持归档后继续由 REQ-xx 反向穿透召回
+  const bizDocs = loadAllBizDocuments(shangshu.cwd);
+  for (const b of bizDocs) {
+    docs.push({
+      label: b.relPath || `.sansheng/context/${b.id}.md`,
+      bizId: b.id,
+      content: b.rawContent,
+    });
+  }
+
   return docs;
 }
 
@@ -95,8 +107,22 @@ function summarizeRelated(refs, shangshu) {
   const tasks = shangshu.listTasks();
   const taskMap = new Map(tasks.map(t => [t.id.toUpperCase(), t]));
   const jobsDir = path.join(shangshu.sanshengDir, 'jobs');
+  const bizIndex = loadBizIndex(shangshu.cwd);
 
   return refs.slice(0, 12).map(ref => {
+    if (ref.type === 'BIZ') {
+      const b = bizIndex?.byBiz?.[ref.id] || findBizDocument(shangshu.cwd, ref.id);
+      if (b) {
+        const statusNote = b.status === 'superseded'
+          ? `已废止${(b.supersededBy || []).length > 0 ? `→${b.supersededBy.join(',')}` : ''}`
+          : b.status;
+        return {
+          id: b.id,
+          type: 'BIZ',
+          summary: `${b.title} (${statusNote})`,
+        };
+      }
+    }
     if (ref.type === 'TASK') {
       const t = taskMap.get(ref.id) || tasks.find(item => ref.id.startsWith(item.id));
       if (t) {
@@ -149,6 +175,49 @@ export function recallById(id, options = {}) {
   const rawId = id.trim();
   const upperId = rawId.toUpperCase();
   const shangshu = new Shangshu(cwd);
+
+  // 0. BIZ-YYYYMMDD-xx 业务背景档案召回（含源码 @biz 锚点坐标与演化链下一跳）
+  if (upperId.startsWith('BIZ-')) {
+    const doc = findBizDocument(cwd, upperId);
+    if (!doc) {
+      return { found: false, id: upperId, type: 'BIZ', message: `未找到业务背景档案 [${upperId}]`, related: [] };
+    }
+
+    const bizIndex = loadBizIndex(cwd);
+    const matchedAnchors = (bizIndex?.anchors || []).filter(a => a.bizId === upperId);
+    let fullText = doc.rawContent;
+    if (matchedAnchors.length > 0) {
+      const anchorBlock = matchedAnchors
+        .map(a => `- \`${a.file}:L${a.line}\`${a.symbol ? ` (${a.symbol})` : ''}: ${a.reason}`)
+        .join('\n');
+      fullText += `\n\n## 📍 关联源码 @biz 锚点 (${matchedAnchors.length})\n${anchorBlock}`;
+    }
+
+    const page = paginateContent(fullText, offset, limit);
+    const explicitRefs = [
+      ...(doc.supersededBy || []).map(x => ({ id: x, type: 'BIZ' })),
+      ...(doc.supersedes || []).map(x => ({ id: x, type: 'BIZ' })),
+      ...(doc.relatedBiz || []).map(x => ({ id: x, type: 'BIZ' })),
+      ...(doc.reqs || []).map(x => ({ id: x, type: 'REQ' })),
+    ];
+    const refs = [...explicitRefs, ...extractRelatedRefs(fullText, upperId)];
+    const deduped = [];
+    const seen = new Set();
+    for (const r of refs) {
+      if (r.id === upperId || seen.has(r.id)) continue;
+      seen.add(r.id);
+      deduped.push(r);
+    }
+
+    return {
+      found: true,
+      id: upperId,
+      type: 'BIZ',
+      source: doc.relPath || path.relative(cwd, doc.filePath),
+      ...page,
+      related: summarizeRelated(deduped, shangshu),
+    };
+  }
 
   // 1. JOB-xx 召回 (异步后台工兵状态与完整日志 Spill)
   if (upperId.startsWith('JOB-')) {
@@ -308,6 +377,7 @@ export function recallById(id, options = {}) {
           }
           matchedBlocks.push(`### 来源: ${doc.label}\n${block.join('\n')}`);
           if (doc.taskId) relatedTasks.push({ id: doc.taskId, type: 'TASK' });
+          if (doc.bizId) relatedTasks.push({ id: doc.bizId, type: 'BIZ' });
         }
       }
     }
@@ -365,7 +435,7 @@ export function recallById(id, options = {}) {
     found: false,
     id: rawId,
     type: 'UNKNOWN',
-    message: `不支持的对象 ID 前缀 [${rawId}]，支持 TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE`,
+    message: `不支持的对象 ID 前缀 [${rawId}]，支持 BIZ-YYYYMMDD-xx / TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE`,
     related: [],
   };
 }

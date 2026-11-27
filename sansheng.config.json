@@ -33,5 +33,13 @@
     "enabled": true,
     "auto_recall_on_align": true,
     "auto_postmortem_on_fix": true
+  },
+  "business_context": {
+    "enabled": true,
+    "context_dir": ".sansheng/context",
+    "commit_to_git": true,
+    "sync_to_yongle": false,
+    "auto_inject_on_focus": true,
+    "inject_budget_tokens": 300
   }
 }

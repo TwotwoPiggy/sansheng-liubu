@@ -17,6 +17,14 @@ export interface SanshengConfig {
     autoRecallOnAlign?: boolean;
     autoPostmortemOnFix?: boolean;
   };
+  businessContext?: {
+    enabled?: boolean;
+    contextDir?: string;
+    commitToGit?: boolean;
+    syncToYongle?: boolean;
+    autoInjectOnFocus?: boolean;
+    injectBudgetTokens?: number;
+  };
 }
 
 /** 插件唯一标识 */
@@ -57,6 +65,23 @@ export {
 } from './tools/skill-injector.js';
 export { RuleSync } from './tools/rule-sync.js';
 export { createUpdateTool } from './dsh/tools/update-tool.js';
+export { createWhyTool } from './dsh/tools/why-tool.js';
+export { createBizTool } from './dsh/tools/biz-tool.js';
+export {
+  resolveBizConfig,
+  createBizContext,
+  linkBizContext,
+  listBizContexts,
+  scanCodeAnchors,
+  rebuildBizIndex,
+  loadBizIndex,
+  getFileBizBrief,
+  getFileBizBadge,
+  collectCallChainContext,
+  queryWhy,
+  auditBizContext,
+  syncMilestoneToBizContext,
+} from './core/biz-context.js';
 export {
   runUpdate,
   upgradeNpmPackage,

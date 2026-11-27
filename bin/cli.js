@@ -19,6 +19,14 @@ import { syncGlobalSkills } from '../src/tools/skill-injector.js';
 import { RuleSync } from '../src/tools/rule-sync.js';
 import { Menxia } from '../src/core/menxia.js';
 import { recallById } from '../src/core/recall.js';
+import {
+  createBizContext,
+  linkBizContext,
+  listBizContexts,
+  rebuildBizIndex,
+  queryWhy,
+  auditBizContext,
+} from '../src/core/biz-context.js';
 import { SubagentAdapter } from '../src/tools/subagent-adapter.js';
 import { startMcpServer } from '../src/mcp/server.js';
 
@@ -70,6 +78,12 @@ async function main() {
       break;
     case 'recall':
       handleRecallCommand(args.slice(1));
+      break;
+    case 'why':
+      handleWhyCommand(args.slice(1));
+      break;
+    case 'biz':
+      handleBizCommand(args.slice(1));
       break;
     case 'worker':
       handleWorkerCommand(args.slice(1));
@@ -129,6 +143,8 @@ async function initProject() {
   if (!fs.existsSync(sanshengDir)) fs.mkdirSync(sanshengDir, { recursive: true });
   const archiveDir = path.join(sanshengDir, 'archive');
   if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
+  const contextDir = path.join(sanshengDir, 'context');
+  if (!fs.existsSync(contextDir)) fs.mkdirSync(contextDir, { recursive: true });
 
   const configPath = path.join(sanshengDir, 'config.json');
   const legacyConfigPath = path.join(cwd, '.sanshengrc.json');
@@ -158,6 +174,14 @@ async function initProject() {
           enabled: yongleActive,
           auto_recall_on_align: true,
           auto_postmortem_on_fix: true
+        },
+        business_context: {
+          enabled: true,
+          context_dir: ".sansheng/context",
+          commit_to_git: true,
+          sync_to_yongle: false,
+          auto_inject_on_focus: true,
+          inject_budget_tokens: 300
         }
       };
       fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
@@ -345,8 +369,12 @@ function showHelp() {
                                 (参数: --watch / -w 监听文件变动并自动重新编译, --serve / -s 启动免授权本地实时双向服务)
   sansheng uat                  启动交互式单项 UAT 验收与自愈修复循环
   sansheng archive              执行项目两级归档并同步至《永乐大典》
-  sansheng recall <id>          链式召回指定对象 (TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE)
+  sansheng recall <id>          链式召回指定对象 (BIZ-YYYYMMDD-xx / TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE)
                                 (参数: --offset N, --limit N, --json)
+  sansheng why <target>         0-Token 反查代码文件/行号/符号/BIZ ID 的业务需求、决策背景与特殊逻辑
+                                (参数: --chain [1|2] 穿透上下游调用链, --no-git, --offset N, --limit N, --json)
+  sansheng biz <action>         永久业务背景档案管理 (create / link / list / reindex / audit)
+                                (示例: sansheng biz create --title "..." --why "..." --files a.js --from-git)
   sansheng worker <action>      全双工异步工兵控制 (start [taskId] [title] [--cmd ...], status [jobId], stop <jobId>)
   sansheng mcp                  启动标准 stdio MCP Server (供 Antigravity / VS Code 等直接挂载)
   `);
@@ -386,6 +414,227 @@ function handleRecallCommand(cliArgs = []) {
     console.log(`\n🔗 下一跳关联指针:`);
     res.related.forEach(r => console.log(`  - [${r.id}] (${r.type}): ${r.summary}`));
   }
+  console.log();
+}
+
+function handleWhyCommand(cliArgs = []) {
+  const valueFlags = new Set(['--offset', '--limit', '--chain-depth']);
+  let target = '';
+  let chainDepth = 0;
+
+  for (let i = 0; i < cliArgs.length; i++) {
+    const token = cliArgs[i];
+    if (token === '--chain') {
+      const next = cliArgs[i + 1];
+      if (next && /^\d+$/.test(next)) {
+        chainDepth = parseInt(next, 10);
+        i++;
+      } else {
+        chainDepth = 1;
+      }
+      continue;
+    }
+    if (valueFlags.has(token)) {
+      i++;
+      continue;
+    }
+    if (!token.startsWith('-') && !target) {
+      target = token;
+    }
+  }
+
+  const explicitDepth = getFlagValue(cliArgs, '--chain-depth');
+  if (explicitDepth !== undefined) {
+    chainDepth = parseInt(explicitDepth, 10) || 0;
+  }
+
+  const offset = parseInt(getFlagValue(cliArgs, '--offset', '0'), 10) || 0;
+  const limit = parseInt(getFlagValue(cliArgs, '--limit', '2400'), 10) || 2400;
+  const includeGit = !cliArgs.includes('--no-git');
+  const asJson = cliArgs.includes('--json');
+
+  const res = queryWhy(process.cwd(), target, {
+    chainDepth,
+    includeGit,
+    offset,
+    limit,
+  });
+
+  if (asJson) {
+    console.log(JSON.stringify(res, null, 2));
+    return;
+  }
+
+  if (!res.found) {
+    console.log(`\n⚠️ [业务溯源 why] ${res.message}\n`);
+    return;
+  }
+
+  console.log(`\n${res.content}`);
+  if (res.truncated) {
+    console.log(`\n📄 已截断 (${res.offset}~${res.offset + res.content.length} / ${res.totalLength} 字符)，使用 --offset ${res.nextOffset} 可续读。`);
+  }
+  if ((res.related || []).length > 0) {
+    console.log(`\n🔗 下一跳关联指针 (sansheng recall <ID>):`);
+    res.related.forEach(r => console.log(`  - [${r.id}] (${r.type}): ${r.summary}`));
+  }
+  console.log();
+}
+
+function getAllFlagValues(cliArgs = [], flagName = '') {
+  const values = [];
+  for (let i = 0; i < cliArgs.length; i++) {
+    if (cliArgs[i] === flagName && cliArgs[i + 1] !== undefined) {
+      values.push(cliArgs[i + 1]);
+      i++;
+    }
+  }
+  return values;
+}
+
+function handleBizCommand(cliArgs = []) {
+  const cwd = process.cwd();
+  const sub = (cliArgs[0] && !cliArgs[0].startsWith('-')) ? cliArgs[0].toLowerCase() : 'list';
+  const rest = sub === cliArgs[0]?.toLowerCase() ? cliArgs.slice(1) : cliArgs;
+  const asJson = cliArgs.includes('--json');
+
+  if (sub === 'create') {
+    const title = getFlagValue(rest, '--title') || rest.find(a => !a.startsWith('-')) || '未命名业务背景';
+    const why = getAllFlagValues(rest, '--why').join('\n');
+    const decisions = [...getAllFlagValues(rest, '--decision'), ...getAllFlagValues(rest, '--decisions')].join('\n');
+    const specialLogic = [...getAllFlagValues(rest, '--special'), ...getAllFlagValues(rest, '--special-logic')].join('\n');
+    const reqs = getAllFlagValues(rest, '--reqs').concat(getAllFlagValues(rest, '--req')).join(',');
+    const rules = getAllFlagValues(rest, '--rules').concat(getAllFlagValues(rest, '--rule')).join(',');
+    const files = getAllFlagValues(rest, '--files').concat(getAllFlagValues(rest, '--file')).join(',');
+    const symbols = getAllFlagValues(rest, '--symbols').concat(getAllFlagValues(rest, '--symbol')).join(',');
+    const commits = getAllFlagValues(rest, '--commits').concat(getAllFlagValues(rest, '--commit')).join(',');
+    const supersedes = getAllFlagValues(rest, '--supersedes').join(',');
+    const relatedBiz = getAllFlagValues(rest, '--related').join(',');
+    const externalRef = getFlagValue(rest, '--ref', '');
+    const id = getFlagValue(rest, '--id');
+    const fromGit = rest.includes('--from-git');
+    const syncToYongle = rest.includes('--sync-yongle') ? true : undefined;
+
+    const res = createBizContext(cwd, {
+      ...(id ? { id } : {}),
+      title,
+      why,
+      decisions,
+      specialLogic,
+      reqs,
+      rules,
+      files,
+      symbols,
+      commits,
+      supersedes,
+      relatedBiz,
+      externalRef,
+      fromGit,
+      ...(syncToYongle !== undefined ? { syncToYongle } : {}),
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(res, null, 2));
+      return;
+    }
+    console.log(`\n🧭 [业务背景档案已落盘] [${res.id}] ${res.title}`);
+    console.log(`   ➔ 📄 档案路径: ${res.filePath}`);
+    if ((res.supersededUpdated || []).length > 0) {
+      console.log(`   ➔ 🔄 演化链更新: 已将旧口径 [${res.supersededUpdated.join(', ')}] 标记为 superseded`);
+    }
+    if (res.yongleResult?.synced) {
+      console.log(`   ➔ 🏛️ 永乐双写: ${res.yongleResult.path}`);
+    }
+    console.log(`   ➔ 💡 源码特殊逻辑可标注: // @biz ${res.id}: <一句话原因>\n`);
+    return;
+  }
+
+  if (sub === 'link') {
+    const bizId = getFlagValue(rest, '--id') || rest.find(a => !a.startsWith('-'));
+    const res = linkBizContext(cwd, bizId, {
+      files: getAllFlagValues(rest, '--files').concat(getAllFlagValues(rest, '--file')).join(','),
+      symbols: getAllFlagValues(rest, '--symbols').concat(getAllFlagValues(rest, '--symbol')).join(','),
+      commits: getAllFlagValues(rest, '--commits').concat(getAllFlagValues(rest, '--commit')).join(','),
+      reqs: getAllFlagValues(rest, '--reqs').concat(getAllFlagValues(rest, '--req')).join(','),
+      rules: getAllFlagValues(rest, '--rules').concat(getAllFlagValues(rest, '--rule')).join(','),
+      supersedes: getAllFlagValues(rest, '--supersedes').join(','),
+      relatedBiz: getAllFlagValues(rest, '--related').join(','),
+      why: getAllFlagValues(rest, '--why').join('\n'),
+      decisions: getAllFlagValues(rest, '--decision').join('\n'),
+      specialLogic: getAllFlagValues(rest, '--special').join('\n'),
+      fromGit: rest.includes('--from-git'),
+      status: getFlagValue(rest, '--status'),
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(res, null, 2));
+      return;
+    }
+    if (!res.success) {
+      console.log(`\n⚠️ [业务档案绑定失败] ${res.message}\n`);
+      return;
+    }
+    console.log(`\n🔗 [业务档案已更新] [${res.id}] ➔ 文件 ${res.files.length} 个 | 符号 ${res.symbols.length} 个 | 提交 ${res.commits.length} 个\n`);
+    return;
+  }
+
+  if (sub === 'reindex') {
+    const includeGit = rest.includes('--git') || rest.includes('--include-git');
+    const idx = rebuildBizIndex(cwd, { includeGit });
+    if (asJson) {
+      console.log(JSON.stringify(idx, null, 2));
+      return;
+    }
+    console.log(`\n⚡ [0-Token 业务索引已重建] .sansheng/context/index.json`);
+    console.log(`   ➔ 档案: ${idx.stats.totalBiz} (生效 ${idx.stats.activeBiz} / 已替代 ${idx.stats.supersededBiz}) | 源码锚点: ${idx.stats.totalAnchors} (@biz ${idx.stats.bizAnchors} / @why ${idx.stats.whyAnchors}) | 关联文件: ${idx.stats.linkedFiles}\n`);
+    return;
+  }
+
+  if (sub === 'audit') {
+    const audit = auditBizContext(cwd);
+    if (asJson) {
+      console.log(JSON.stringify(audit, null, 2));
+      return;
+    }
+    console.log(`\n${audit.passed ? '✅ [业务溯源体检通过]' : '⚠️ [业务溯源体检发现异常]'}`);
+    console.log(`   ➔ 档案: ${audit.stats.totalBiz} (生效 ${audit.stats.activeBiz}) | 锚点: ${audit.stats.totalAnchors} | 关联文件: ${audit.stats.linkedFiles}`);
+    if (audit.orphanAnchors.length > 0) {
+      console.log(`   ❌ 幽灵 @biz 锚点 (${audit.orphanAnchors.length}):`);
+      audit.orphanAnchors.forEach(a => console.log(`      - ${a.file}:L${a.line} -> ${a.bizId} (${a.reason})`));
+    }
+    if (audit.supersededAnchors.length > 0) {
+      console.log(`   🔄 指向已废止档案的锚点 (${audit.supersededAnchors.length}):`);
+      audit.supersededAnchors.forEach(a => console.log(`      - ${a.file}:L${a.line} -> ${a.bizId} (新口径: ${(a.supersededBy || []).join(', ') || '未指定'})`));
+    }
+    if (audit.missingFiles.length > 0) {
+      console.log(`   📂 失联文件路径 (${audit.missingFiles.length}):`);
+      audit.missingFiles.forEach(m => console.log(`      - [${m.bizId}] ${m.file}`));
+    }
+    if (audit.unlinkedActiveBiz.length > 0) {
+      console.log(`   📌 尚未绑定代码的生效档案 (${audit.unlinkedActiveBiz.length}): ${audit.unlinkedActiveBiz.map(x => x.id).join(', ')}`);
+    }
+    console.log();
+    return;
+  }
+
+  // default: list
+  const status = getFlagValue(rest, '--status', 'all');
+  const query = getFlagValue(rest, '--query', '');
+  const items = listBizContexts(cwd, { status, query });
+  if (asJson) {
+    console.log(JSON.stringify(items, null, 2));
+    return;
+  }
+  if (items.length === 0) {
+    console.log(`\n📚 当前暂无业务背景档案。运行 \`sansheng biz create --title "..." --why "..."\` 创建首条档案。\n`);
+    return;
+  }
+  console.log(`\n📚 [永久业务背景档案] 共 ${items.length} 条:`);
+  items.forEach(item => {
+    const evo = (item.supersededBy || []).length > 0 ? ` [被 ${item.supersededBy.join(',')} 替代]` : '';
+    console.log(`  - [${item.id}] (${item.status})${evo} ${item.title} | 文件:${item.files.length}`);
+    if (item.summaryLine) console.log(`      ${item.summaryLine}`);
+  });
   console.log();
 }
 
@@ -548,8 +797,8 @@ function handleCopilotCommand(cliArgs = []) {
     console.log(`\n🎉 [VS Code Copilot 适配完成]${dryRun ? ' (Dry-Run 预览，未写盘)' : ''}`);
     console.log(`   💡 在 VS Code Copilot Chat 中可直接使用：`);
     console.log(`      • Custom Agents 选择器: @sansheng / @zhongshu / @menxia / @shangshu（支持一键 Handoff 流转）`);
-    console.log(`      • 斜杠命令 / Skills: /sansheng、/sansheng-recall、/sansheng-worker、/sansheng-update`);
-    console.log(`      • 原生 MCP 工具: sansheng-liubu (9 大核心工具自动挂载)`);
+    console.log(`      • 斜杠命令 / Skills: /sansheng、/sansheng-why、/sansheng-recall、/sansheng-worker、/sansheng-update`);
+    console.log(`      • 原生 MCP 工具: sansheng-liubu (11 大核心工具自动挂载)`);
     console.log(`   🩺 运行 \`sansheng copilot status\` 可随时体检集成状态。\n`);
     return;
   }

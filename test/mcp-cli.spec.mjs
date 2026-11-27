@@ -22,7 +22,7 @@ describe('DSH + Antigravity 双模兼容测试套件 (MCP Server & CLI)', () => 
     } catch (_) {}
   });
 
-  it('1. createMcpServer 支持标准 MCP initialize 与 tools/list (同源暴露全部 9 个工具)', async () => {
+  it('1. createMcpServer 支持标准 MCP initialize 与 tools/list (同源暴露全部 11 个工具)', async () => {
     const server = createMcpServer({ cwd: tmpDir });
 
     const initRes = await server.handleMessage({
@@ -40,10 +40,12 @@ describe('DSH + Antigravity 双模兼容测试套件 (MCP Server & CLI)', () => 
       method: 'tools/list',
     });
     const names = listRes.result.tools.map(t => t.name);
-    assert.strictEqual(names.length, 9);
+    assert.strictEqual(names.length, 11);
     assert.ok(names.includes('sansheng_recall'));
     assert.ok(names.includes('sansheng_dispatch_worker'));
     assert.ok(names.includes('sansheng_update'));
+    assert.ok(names.includes('sansheng_why'));
+    assert.ok(names.includes('sansheng_biz'));
 
     const recallTool = listRes.result.tools.find(t => t.name === 'sansheng_recall');
     assert.strictEqual(recallTool.inputSchema.type, 'object');

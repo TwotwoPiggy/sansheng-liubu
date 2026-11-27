@@ -68,4 +68,27 @@ export const Config = Schema.object({
       .default(true)
       .description('在 UAT 缺陷修复通过后是否即时触发复盘并沉淀经验'),
   }).description('永乐大典双向知识闭环联动配置'),
+
+  businessContext: Schema.object({
+    enabled: Schema.boolean()
+      .default(true)
+      .description('是否启用业务需求/背景与代码逻辑双向溯源机制'),
+    contextDir: Schema.string()
+      .default('.sansheng/context')
+      .description('永久业务背景档案与倒排索引存放目录'),
+    commitToGit: Schema.boolean()
+      .default(true)
+      .description('是否默认随业务代码仓提交入 Git（作为永久团队资产）'),
+    syncToYongle: Schema.boolean()
+      .default(false)
+      .description('是否在创建或结项时同步双写沉淀至《永乐大典》'),
+    autoInjectOnFocus: Schema.boolean()
+      .default(true)
+      .description('在 map --focus 与工兵微切片中自动注入目标文件的业务红线'),
+    injectBudgetTokens: Schema.number()
+      .default(300)
+      .min(80)
+      .max(1500)
+      .description('AI 改代码前自动注入业务背景摘要的 Token 硬上限'),
+  }).description('业务需求/背景与代码双向溯源配置'),
 });

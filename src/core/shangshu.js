@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { YongleBridge } from '../tools/yongle-bridge.js';
 import { parseUATBlocks } from './uat-runner.js';
+import { getFileBizBrief, syncMilestoneToBizContext, loadBizIndex } from './biz-context.js';
 
 /**
  * 尚书省 (Shangshu) - 掌管执行与状态统领 (RUN 与归档阶段)
@@ -195,6 +196,10 @@ export class Shangshu {
     const ruleMatches = content.match(/RULE-\d+/gi) || [];
     const boundRules = [...new Set(ruleMatches.map(r => r.toUpperCase()))];
 
+    // 提取关联的 [BIZ-YYYYMMDD-xx]
+    const bizMatches = content.match(/BIZ-\d{8}-\d+/gi) || [];
+    const boundBiz = [...new Set(bizMatches.map(b => b.toUpperCase()))];
+
     // 提取 UAT 验收项
     const uats = parseUATBlocks(content);
     const completedUats = uats.filter(u => u.passed).length;
@@ -221,6 +226,7 @@ export class Shangshu {
       isActive,
       boundReqs,
       boundRules,
+      boundBiz,
       uats,
       totalUats: uats.length,
       completedUats,
@@ -545,6 +551,20 @@ ${activeSliceOverview}
    * 5. 触发永乐大典同步
    */
   closeMilestone() {
+    // 0. 结项前收集活跃任务/看板中的 BIZ-xxx 关联，自动补录改动文件并刷新永久业务索引（绝不清理 .sansheng/context/）
+    const activeBizIds = new Set();
+    try {
+      if (fs.existsSync(this.taskPath)) {
+        const content = fs.readFileSync(this.taskPath, 'utf-8');
+        (content.match(/BIZ-\d{8}-\d+/gi) || []).forEach(id => activeBizIds.add(id.toUpperCase()));
+      }
+      this.listTasks().forEach(t => (t.boundBiz || []).forEach(id => activeBizIds.add(id)));
+      const bizSync = syncMilestoneToBizContext(this.cwd, { bizIds: [...activeBizIds] });
+      if (bizSync && !bizSync.skipped) {
+        console.log(`🧭 [业务溯源同步] 已刷新 .sansheng/context/index.json (档案 ${bizSync.stats?.totalBiz ?? 0} 条 / 锚点 ${bizSync.stats?.totalAnchors ?? 0} 处)。`);
+      }
+    } catch (_) {}
+
     // 1. 归档单看板
     this.archivePhase('final');
 
@@ -591,10 +611,13 @@ ${activeSliceOverview}
    * 仅打包当前 Task 关联的 [REQ-xx] 细节与 [RULE-xx] 边界，杜绝上下文污染导致的偷工减料
    */
   buildWorkerSliceContext(task = {}, options = {}) {
-    const { reqs = [], rules = [] } = options;
+    const { reqs = [], rules = [], targetFiles = [], cwd = this.cwd } = options;
     const taskId = task?.id || '当前指定任务';
     const taskTitle = task?.title || (typeof task === 'string' ? task : '未定义任务描述');
     const boundReqs = Array.isArray(task?.boundReqs) ? task.boundReqs.map(r => r.toUpperCase()) : [];
+    const filesToInspect = Array.isArray(targetFiles) && targetFiles.length > 0
+      ? targetFiles
+      : (Array.isArray(task?.targetFiles) ? task.targetFiles : (Array.isArray(task?.files) ? task.files : []));
 
     // 过滤与当前任务严格相关的 REQ 条目
     const relevantReqs = (Array.isArray(reqs) ? reqs : []).filter(r => {
@@ -630,6 +653,25 @@ ${activeSliceOverview}
       ruleSection = `- **[RULE-01]** 严禁破坏现有业务单测，外部输入必须执行严格防御校验。`;
     }
 
+    // 自动为待改文件注入业务背景与特殊逻辑红线（无记录时 0 字符追加，受 Token 硬预算约束）
+    let bizGuardSection = '';
+    if (filesToInspect.length > 0 && cwd) {
+      const bizIndex = loadBizIndex(cwd);
+      const briefs = [];
+      const perFileBudget = Math.max(120, Math.floor((options.bizBudgetTokens || 300) / Math.min(filesToInspect.length, 3)));
+      for (const f of filesToInspect.slice(0, 5)) {
+        const brief = getFileBizBrief(cwd, f, {
+          index: bizIndex,
+          maxTokens: perFileBudget,
+          heading: `##### 📄 \`${f}\` 业务红线`,
+        });
+        if (brief) briefs.push(brief);
+      }
+      if (briefs.length > 0) {
+        bizGuardSection = `\n#### 🧭 目标文件历史业务背景与特殊逻辑红线 (改前必读):\n${briefs.join('\n\n')}\n`;
+      }
+    }
+
     return `### 🎯 尚书省工兵当前专属任务切片 (Task Context Slice)
 * **当前执行任务**：\`${taskId}: ${taskTitle}\`
 
@@ -638,11 +680,12 @@ ${reqSection}
 
 #### ⚠️ 适用的业务边界与铁律契约:
 ${ruleSection}
-
+${bizGuardSection}
 #### 🛡️ 工兵特战执行守则:
 1. **测试断言守门**：先为上述需求细节编写/确认自动化测试用例，全绿前严禁声称完成。
 2. **零副作用控制**：仅修改当前任务直接相关的最小文件集，严禁越界扩散改动。
-3. **Diff 行级落地**：提交前必须自检 Git Diff，确保 PRD 约定的边界与异常在代码中有具体语句落实，严禁伪实现。`;
+3. **Diff 行级落地**：提交前必须自检 Git Diff，确保 PRD 约定的边界与异常在代码中有具体语句落实，严禁伪实现。
+4. **特殊逻辑红线保护**：严禁擅自删除或绕过带 \`@biz\`/\`@why\` 锚点的特殊逻辑；新增反直觉特殊处理（特例豁免/历史兼容/防并发/魔数阈值）时必须在对应行上方标注 1 行 \`// @biz <BIZ-ID>: 原因\`（常规代码零注释侵入）。`;
   }
 
   /**

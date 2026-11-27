@@ -67,7 +67,35 @@ export {
 export { RuleSync } from './tools/rule-sync.js';
 export { createAuditPlanTool } from './dsh/tools/audit-plan-tool.js';
 export { createUpdateTool } from './dsh/tools/update-tool.js';
+export { createWhyTool } from './dsh/tools/why-tool.js';
+export { createBizTool } from './dsh/tools/biz-tool.js';
 export { recallById, extractRelatedRefs } from './core/recall.js';
+export {
+  resolveBizConfig,
+  getBizContextDir,
+  getBizIndexPath,
+  parseBizDocument,
+  serializeBizDocument,
+  loadAllBizDocuments,
+  findBizDocument,
+  generateNextBizId,
+  createBizContext,
+  linkBizContext,
+  listBizContexts,
+  findEnclosingSymbol,
+  parseAnchorsFromFileContent,
+  scanFileAnchors,
+  scanCodeAnchors,
+  readGitBizTrailers,
+  rebuildBizIndex,
+  loadBizIndex,
+  getFileBizBadge,
+  getFileBizBrief,
+  collectCallChainContext,
+  queryWhy,
+  auditBizContext,
+  syncMilestoneToBizContext,
+} from './core/biz-context.js';
 export { createMcpServer, startMcpServer } from './mcp/server.js';
 export {
   runUpdate,

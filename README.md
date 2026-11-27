@@ -51,10 +51,10 @@ sansheng copilot setup --workspace-only
 ```
 - **执行效果（VS Code Copilot 原生全栈支持）**：
   - **Custom Instructions**：锚点安全合并 `.github/copilot-instructions.md`（绝不覆写用户原有规则，后续升级原地刷新）；
-  - **Agent Skills**：自动同步全套 4 个技能（`sansheng-liubu`、`sansheng-recall`、`sansheng-worker`、`sansheng-update`）至 `.github/skills/` 与全局 `~/.copilot/skills/`，并开启 `.vscode/settings.json` 中的 `chat.useAgentSkills: true`；
+  - **Agent Skills**：自动同步全套 5 个技能（`sansheng-liubu`、`sansheng-why`、`sansheng-recall`、`sansheng-worker`、`sansheng-update`）至 `.github/skills/` 与全局 `~/.copilot/skills/`，并开启 `.vscode/settings.json` 中的 `chat.useAgentSkills: true`；
   - **Custom Agents + Handoffs**：注入 `.github/agents/` 与 `~/.copilot/agents/` 四个原生角色（`@sansheng` 总控、`@zhongshu` 中书对齐、`@menxia` 门下审核、`@shangshu` 尚书执行），支持一键 Handoff 无缝交接；
   - **Prompt Files**：注入 `.github/prompts/` 与用户级 `Code/User/prompts/`（使用官方标准 `agent: 'agent'`，`chat.promptFiles: true`）；
-  - **原生 MCP 挂载**：采用 VS Code 官方 `servers` + `stdio` 规范无损合并 `.vscode/mcp.json`（及全局 `Code/User/mcp.json`、`~/.copilot/mcp-config.json`），自动挂载 `sansheng-liubu` 9 大核心工具，并自动将旧版 `mcpServers` 格式无损迁移；
+  - **原生 MCP 挂载**：采用 VS Code 官方 `servers` + `stdio` 规范无损合并 `.vscode/mcp.json`（及全局 `Code/User/mcp.json`、`~/.copilot/mcp-config.json`），自动挂载 `sansheng-liubu` 11 大核心工具，并自动将旧版 `mcpServers` 格式无损迁移；
   - 自动创建 `.sansheng/` 私有目录（含 `config.json` 与 `ROADMAP.md`），并将临时缓存加入 `.gitignore`。
 
 #### 2. 生成双层 AST 代码符号与依赖拓扑地图 (Token 压缩率 > 95%)
@@ -416,11 +416,16 @@ DSH 模型上下文可随时调用以下受控工具：
 
 | 工具名称 (`name`) | 权限等级 (`permissionTier`) | 风险分类 (`riskLevel`) | 功能描述 |
 | :--- | :--- | :--- | :--- |
-| `sansheng_codebase_map` | `workspace-read` | `low` | 扫描并提取 AST 符号拓扑骨架 (C#/Vue3/TS/JS，压缩率>95%) |
+| `sansheng_codebase_map` | `workspace-read` | `low` | 扫描并提取 AST 符号拓扑骨架 (C#/Vue3/TS/JS，压缩率>95%)，聚焦切片自动注入业务红线与上下游雷区微徽章 |
+| `sansheng_why` | `read-only` | `low` | 反查文件/行号/符号/BIZ ID 的业务需求、决策背景、源码 `@biz`/`@why` 锚点与 Git Trailer，支持调用链穿透 |
+| `sansheng_biz` | `workspace-write` | `medium` | 管理永久业务背景档案 (`.sansheng/context/BIZ-*.md`)：建档、绑定代码/提交、0-Token 建索引与幽灵引用审计 |
 | `sansheng_task_status` | `read-only` | `low` | 读取当前活跃阶段 150 行 HUD 任务进度看板与完成率 |
+| `sansheng_audit_plan` | `read-only` | `low` | 门下省反向扫描审计：校验 `[REQ-xx]` 100% 覆盖率并出具放行证书或封驳差额单 |
+| `sansheng_recall` | `read-only` | `low` | Inline & Spill 链式召回（支持 `BIZ-xxx` / `TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx` / `ARCHIVE`） |
 | `sansheng_uat_gate` | `workspace-write` | `medium` | 管理与断言 UAT 质量门禁清单 `[UAT-xx]`，支持标记与缺陷自愈 |
-| `sansheng_archive` | `workspace-write` | `medium` | 执行两级归档（阶段切片归档 / 结项全量归档并同步知识库） |
+| `sansheng_archive` | `workspace-write` | `medium` | 执行两级归档（阶段切片归档 / 结项全量归档、刷新业务索引并同步知识库） |
 | `sansheng_sync_rules` | `workspace-write` | `medium` | 自动嗅探并双向同步多 AI IDE (Trae/Cursor/Qoder) 规则 |
+| `sansheng_update` | `workspace-write` | `medium` | 自动检测并原地升级三省六部，无损同步多运行时全局 Skills 与配置 |
 | `sansheng_dispatch_worker` | `dangerous` | `high` | 派生纯净工兵执行任务，**强制接入 `ctx.approval` 显式审批阻断 (Fail-Closed)** |
 
 ---
@@ -432,7 +437,10 @@ DSH 模型上下文可随时调用以下受控工具：
 | `sansheng init` | 首次接入或新项目初始化 | 嗅探环境、注入 VS Code Copilot 全套规则（Skills/Agents/Prompts/MCP）与配置 |
 | `sansheng copilot setup` | 一键配置 VS Code Copilot | 同步工作区与全局 Copilot Instructions / Skills / Custom Agents / Prompts / MCP |
 | `sansheng copilot status` | 体检 VS Code Copilot 状态 | 检测工作区与全局 Skills、Agents、MCP (`servers`) 与 `settings.json` 就绪状态 |
-| `sansheng map` | 源码结构变动时重新扫描 | 提取 AST 骨架生成 `.sansheng/codebase_map.md` (压缩率>95%) |
+| `sansheng map` | 源码结构变动时重新扫描 | 提取 AST 骨架生成 `.sansheng/codebase_map.md` (压缩率>95%)；`--focus` 自动附带生效业务红线 |
+| `sansheng why <target>` | 查某行/文件/符号为什么这么写 | 0-Token 聚合源码 `@biz`/`@why`、永久 `BIZ` 档案与 Git Trailer；支持 `--chain [1\|2]` 穿透上下游调用链 |
+| `sansheng biz <action>` | 独立或随流程沉淀业务背景 | `create` / `link` / `list` / `reindex` / `audit`，管理 `.sansheng/context/` 与纵向演化链 (`supersedes`) |
+| `sansheng recall <id>` | 链式按需展开上下文 | 按 ID (`BIZ-xxx`/`TASK-xx`/`REQ-xx`/`UAT-xx`/`JOB-xx`/`ARCHIVE`) 分页展开并输出下一跳指针 |
 | `sansheng sync-rules` | 多 IDE 协同开发时 | 嗅探 Trae/CatPaw/Qoder/Cursor 规则并转译至 `.github/copilot-instructions.md` 与 `.github/instructions/*.instructions.md` |
 | `sansheng sync-rules --export <ide>` | 导出规则至其他 IDE | 将集中维护的规则导出为 `.trae/rules.md` / `.cursorrules` / `.github/copilot-instructions.md` 等 |
 | `sansheng status` | 随时查看进度 | 查看当前活跃 Phase 的 3 行 HUD 任务进度看板 |

@@ -22,10 +22,12 @@ handoffs:
 
 ## 1. 工具调用优先级 (VS Code Copilot + MCP)
 优先调用已挂载的 `sansheng-liubu` MCP 工具；若当前会话未加载 MCP，无缝降级为终端执行 `sansheng` CLI：
-- 代码骨架与局部切片：`sansheng_codebase_map`（或 `sansheng map [--focus <path>]`）
+- 代码骨架与局部切片：`sansheng_codebase_map`（或 `sansheng map [--focus <path>]`，聚焦时自动附带目标文件业务红线与上下游雷区微徽章）
+- 业务背景与特殊逻辑反查：`sansheng_why`（或 `sansheng why <file[:line]|symbol|BIZ-ID> [--chain]`）
+- 永久业务档案管理：`sansheng_biz`（或 `sansheng biz create|link|list|reindex|audit`）
 - 任务看板状态：`sansheng_task_status`（或 `sansheng status`）
 - 门下省反向审计：`sansheng_audit_plan`（或 `sansheng audit-plan`）
-- 链式上下文召回：`sansheng_recall`（或 `sansheng recall <ID> --json`）
+- 链式上下文召回：`sansheng_recall`（或 `sansheng recall <ID> --json`，含 `BIZ-YYYYMMDD-xx`）
 - 异步后台工兵：`sansheng_dispatch_worker`（或 `sansheng worker start|status|stop --json`）
 - UAT 门禁与看板：`sansheng_uat_gate`（或 `sansheng html` / `sansheng uat`）
 - 归档结项：`sansheng_archive`（或 `sansheng archive`）

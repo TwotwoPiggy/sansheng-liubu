@@ -105,4 +105,57 @@ export class YongleBridge {
     console.log(`ℹ️ [永乐大典] 未找到 yongle-sync-knowledge.js，可在 IDE 对话框中使用 yongle-sync 技能同步。`);
     return false;
   }
+
+  /**
+   * 将业务背景档案 (BIZ-xxx) 双写沉淀至本地《永乐大典》接入缓冲区
+   * 默认落地在 <cwd>/.planning/yongle/biz-context/<BIZ-ID>.md，便于永乐索引或后续同步
+   */
+  syncBizContext(bizDoc = {}, cwd = process.cwd()) {
+    if (!bizDoc || !bizDoc.id) {
+      return { synced: false, reason: 'missing_biz_id' };
+    }
+
+    try {
+      const targetDir = path.join(cwd, '.planning', 'yongle', 'biz-context');
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      const destPath = path.join(targetDir, `${bizDoc.id}.md`);
+      const whyLines = (Array.isArray(bizDoc.why) ? bizDoc.why : []).map(x => `- ${x}`).join('\n') || '- （无）';
+      const decLines = (Array.isArray(bizDoc.decisions) ? bizDoc.decisions : []).map(x => `- ${x}`).join('\n') || '- （无）';
+      const specialLines = (Array.isArray(bizDoc.specialLogic) ? bizDoc.specialLogic : []).map(x => `- ${x}`).join('\n') || '- （无）';
+      const files = (Array.isArray(bizDoc.files) ? bizDoc.files : []).join(', ') || '（待补充）';
+
+      const md = [
+        `# [业务背景] ${bizDoc.id} ${bizDoc.title || ''}`,
+        '',
+        `- **状态**: ${bizDoc.status || 'active'}`,
+        `- **更新时间**: ${bizDoc.updatedAt || bizDoc.createdAt || new Date().toISOString().slice(0, 10)}`,
+        `- **关联需求**: ${(bizDoc.reqs || []).join(', ') || '无'}`,
+        `- **关联文件**: ${files}`,
+        '',
+        '## 业务背景 (Why)',
+        whyLines,
+        '',
+        '## 关键决策与取舍',
+        decLines,
+        '',
+        '## 特殊逻辑与业务红线',
+        specialLines,
+        '',
+      ].join('\n');
+
+      fs.writeFileSync(destPath, md, 'utf-8');
+      return {
+        synced: true,
+        path: path.relative(cwd, destPath).replace(/\\/g, '/'),
+        scriptsDetected: Boolean(this.resolveScriptsDir()),
+      };
+    } catch (err) {
+      return {
+        synced: false,
+        reason: err.message,
+      };
+    }
+  }
 }

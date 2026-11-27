@@ -29,7 +29,7 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
 - **动作2 原子粉碎提取 (防漏铁律)**：严禁直接从 PRD 跳到 Plan！必须先将需求粉碎为挂载明确验收标准 (AC) 的离散 `[REQ-xx]` 编号清单（包含正常流与异常流）。
 - **动作3 锚定式质询**：先用 Markdown 完整输出「坐标 + 微引用 + 疑点分析 + 推荐选项」四要素，若宿主支持 `ask_question` 则紧接着调用弹窗一次性勾选拍板（首项标注推荐，允许在 `Other` 输入组合/演进/插话指令）。
 - **动作4 敏捷交互响应**：支持堆栈下钻、零废话握手及三态语法（`A+B` / `纠结 A/B` / `先 B 后 A`）。
-- **动作5 提炼边界铁律**：提炼 3-5 条红线规则 `[RULE-xx]`。
+- **动作5 提炼边界铁律与业务档案固化**：提炼 3-5 条红线规则 `[RULE-xx]`；对齐定稿后，顺手调用 `sansheng_biz({ action: "create", ... })` 将**业务背景 (Why)、关键决策取舍（为何选A弃B）与红线**落盘为永久只增档案 `.sansheng/context/BIZ-YYYYMMDD-xx.md`（若替代旧口径需填写 `supersedes`，自动将旧档案标为 `superseded` 防过期干扰）。
 - **§13 跨端自适应降级**：有 `ask_question` 等原生弹窗工具时采用「Markdown 详述 + 弹窗点选」；不支持弹窗的环境自动降级为纯流式 Markdown 提问。
 - **§14 插话回溯**：用户随时可修改早期决策（或通过弹窗 `Other` 提出变更），AI 必须优先响应，自动分析涟漪影响并联动调整下游节点。
 
@@ -43,7 +43,7 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
 ### 尚书省与六部 ➔ 【RUN 执行与归档阶段】
 - **动作1 纯净派生与微切片注入**：仅向工兵投喂当前 Task 绑定的 `[REQ-xx]` 细节与 `[RULE-xx]` 边界，屏蔽无关上下文，杜绝注意力稀释。
 - **动作2 契约与单测守门**：工兵编码前先编写/对齐针对该 REQ 边界的自动化测试，单测全绿前严禁交付。
-- **动作3 Diff 行级对账与物理压榨**：提交前核对 Git Diff，确认 PRD 约束真实落地到代码行，杜绝伪实现；调用原生指令重命名与工具排版。
+- **动作3 Diff 行级对账、特殊逻辑锚定与物理压榨**：提交前核对 Git Diff，确认 PRD 约束真实落地到代码行，杜绝伪实现；**混合双轨原则**——常规 CRUD 零注释侵入（推荐在 Commit 尾附加 `Biz-Context: BIZ-xxx` Trailer），**仅 5 类特殊/反直觉逻辑**（隐性业务豁免、历史脏数据/外部接口妥协、防并发/防重入防御、魔数/性能折中、临时止血）在对应行上方写 1 行 `// @biz BIZ-YYYYMMDD-xx [RULE-xx]: 原因`（或小修写 `// @why: 原因`）；严禁擅自删改已有 `@biz`/`@why` 标记的特殊逻辑；调用原生指令重命名与工具排版。
 - **动作4 弹性自愈**：连续 2 次测试失败自动升级处理。
 - **动作5 单步汇报与交互式 UAT**：单步模式每完成一个 Task 汇报后，支持 `ask_question` 时弹窗供选 `继续下一任务 (s)` / `全自动跑完剩余 (c)` / `先暂停，结束`；进入 UAT 时输出单项四要素卡片（以 PRD 预期为唯一真理源）并弹窗供选 `✅ 通过 (1)` / `❌ 不通过（Other 填偏差）` / `打开 HTML 看板` / `暂缓验收，结束`，修复通过即时触发 `yongle-postmortem` 归档。
 - **动作6 三级自动归档与完工收尾**：全部任务/验收完成后，汇报交付结果；若支持 `ask_question` 则弹窗供选 `📦 归档并同步永乐大典 (archive)` / `继续微调或追加需求` / `暂不归档，结束`；结项同步全量经验，清理活跃任务板与分片池。
@@ -56,15 +56,18 @@ description: 三省六部 AI 研发工作流：中书需求对齐、门下门禁
 ## 跨平台原生工具与 CLI 扩展 (VS Code Copilot + DSH + Antigravity 多模兼容)
 - **VS Code Copilot 原生全套集成**：支持 Custom Agents（`.github/agents/` & `~/.copilot/agents/`：`@sansheng` / `@zhongshu` / `@menxia` / `@shangshu`，内置 Handoffs 一键流转）、Agent Skills（`.github/skills/` & `~/.copilot/skills/`）、Custom Instructions（`.github/copilot-instructions.md` & `.github/instructions/*.instructions.md`）、Prompt Files（`agent: 'agent'`）与标准 `servers` 格式 `.vscode/mcp.json` / `Code/User/mcp.json` / `~/.copilot/mcp-config.json`。
   - CLI 指令：`sansheng copilot setup [--global-only|--workspace-only]` / `sansheng copilot status [--json]`
-- **Inline & Spill 链式召回**：支持按 ID（`TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx` / `ARCHIVE`）按需分页展开被 Spill 的上下文与下一跳关联指针。
+- **Inline & Spill 链式召回**：支持按 ID（`BIZ-YYYYMMDD-xx` / `TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx` / `ARCHIVE`）按需分页展开被 Spill 的上下文与下一跳关联指针（含纵向业务演化链）。
   - DSH / MCP 工具：`sansheng_recall`
   - CLI 指令：`sansheng recall <id> [--offset 0] [--limit 2000] [--json]`
+- **业务背景与特殊逻辑双向溯源（两栖零依赖 + Token 护栏）**：永久业务背景档案（`.sansheng/context/BIZ-*.md`）随 Git 留存并支持可配置双写永乐大典；`sansheng map --focus` 与工兵切片自动按需注入生效红线（≤300 Token 硬上限，无关联文件 0 膨胀）与上下游雷区微徽章。
+  - DSH / MCP 工具：`sansheng_why`（反查文件/行号/符号/BIZ ID，支持 `chainDepth: 1..2` 调用链穿透）、`sansheng_biz`（`create`/`link`/`list`/`reindex`/`audit`）
+  - CLI 指令：`sansheng why <target> [--chain [1|2]] [--json]` / `sansheng biz <create|link|list|reindex|audit>`
 - **全双工异步工兵**：支持 `start` / `status` / `stop` 非阻塞后台执行与状态持久化（`.sansheng/jobs/`）。
   - DSH / MCP 工具：`sansheng_dispatch_worker`（`action: "start" | "status" | "stop" | "sync"`）
   - CLI 指令：`sansheng worker start|status|stop`
 - **一键升级与多运行时技能同步**：自动识别 Git 仓库 / npm 全局包模式，支持指定版本/Tag、失败回滚，并自动重注入 Antigravity/VS Code Copilot/Claude/Cursor/Trae 等全局 AI 运行时 Skills。
   - DSH / MCP 工具：`sansheng_update`（`action: "check" | "update" | "sync-skills"`）
   - CLI 指令：`sansheng update [version] [--check] [--skip-npm] [--force] [--json]`
-- **原生 stdio MCP Server 挂载**：直接运行 `sansheng mcp [--cwd <path>]` 或 `sansheng-mcp`，为 VS Code Copilot / Antigravity / Claude 等客户端同源暴露全部 9 个核心工具。
+- **原生 stdio MCP Server 挂载**：直接运行 `sansheng mcp [--cwd <path>]` 或 `sansheng-mcp`，为 VS Code Copilot / Antigravity / Claude 等客户端同源暴露全部 11 个核心工具。
 
 ✅ 引导 AI 注意：在 ALIGN 阶段请务必参考完整规范白皮书 `LITE_DEV_WORKFLOW_SPEC.md`

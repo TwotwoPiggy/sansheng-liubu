@@ -4,14 +4,14 @@ import { recallById } from '../../core/recall.js';
 export function createRecallTool(config) {
   return defineTool({
     name: 'sansheng_recall',
-    description: '【Inline & Spill 链式召回】按唯一 ID (TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE) 按需展开被 Spill 的完整上下文，支持 offset/limit 分页续读并内联下一跳关联指针。',
+    description: '【Inline & Spill 链式召回】按唯一 ID (BIZ-YYYYMMDD-xx / TASK-xx / REQ-xx / UAT-xx / JOB-xx / ARCHIVE) 按需展开被 Spill 的完整上下文，支持 offset/limit 分页续读并内联下一跳关联指针。',
     permissionTier: 'read-only',
     riskLevel: 'low',
     parameters: {
       id: {
         type: 'string',
         required: true,
-        description: '目标对象唯一标识，如 "TASK-01"、"REQ-02"、"UAT-01"、"JOB-xxx"、"ARCHIVE" 或 "ARCHIVE/tasks/xxx.md"',
+        description: '目标对象唯一标识，如 "BIZ-20261128-01"、"TASK-01"、"REQ-02"、"UAT-01"、"JOB-xxx"、"ARCHIVE" 或 "ARCHIVE/tasks/xxx.md"',
       },
       offset: {
         type: 'number',

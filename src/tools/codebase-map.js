@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { getFileBizBrief, getFileBizBadge, loadBizIndex } from '../core/biz-context.js';
 
 const DEFAULT_IGNORED_DIRS = ['node_modules', 'bin', 'obj', '.git', 'dist', 'build', '.tasks', '.sansheng', '.system_generated', '.vscode', '.idea'];
 const CACHE_FILE_REL = path.join('.sansheng', 'cache', 'map_cache.json');
@@ -232,30 +233,44 @@ export function queryFocusedMap(dir = process.cwd(), focusPath = '', options = {
     sliceMd += `${focusNode.skeleton}\n\n`;
   }
 
+  // 1.5 AI 改前自动注入目标文件业务背景与特殊逻辑红线 (无记录时 0 Token 增量，受硬预算护栏保护)
+  const bizIndex = options.includeBiz === false ? null : loadBizIndex(dir);
+  if (options.includeBiz !== false) {
+    const bizBrief = getFileBizBrief(dir, matchedKey, {
+      index: bizIndex,
+      ...(options.bizBudgetTokens ? { maxTokens: options.bizBudgetTokens } : {}),
+    });
+    if (bizBrief) {
+      sliceMd += `${bizBrief}\n\n`;
+    }
+  }
+
   let remainingChars = maxCharBudget - sliceMd.length;
 
-  // 2. 下游依赖契约 (直接被它调用的服务/工具)
+  // 2. 下游依赖契约 (直接被它调用的服务/工具，仅附 ~5 Token 业务雷区微徽章)
   if (downstream.length > 0 && remainingChars > 300) {
     sliceMd += `## ⬇️ 下游依赖契约 (Dependencies)\n`;
     for (const dep of downstream) {
       const depNode = graph[dep];
       if (!depNode) continue;
+      const badge = options.includeBiz === false ? '' : getFileBizBadge(dir, dep, { index: bizIndex });
       const compactSkel = depNode.skeleton || `* \`${dep}\` (导出: ${depNode.exports?.join(', ') || '内部实现'})`;
-      const block = `### 📄 \`${dep}\` (依赖项)\n${compactSkel}\n\n`;
+      const block = `### 📄 \`${dep}\` (依赖项)${badge}\n${compactSkel}\n\n`;
       if (block.length < remainingChars) {
         sliceMd += block;
         remainingChars -= block.length;
       } else {
-        sliceMd += `* \`${dep}\` (导出: ${depNode.exports?.join(', ') || '无导出'})\n`;
+        sliceMd += `* \`${dep}\`${badge} (导出: ${depNode.exports?.join(', ') || '无导出'})\n`;
       }
     }
   }
 
-  // 3. 上游调用方 (谁在调用/使用它)
+  // 3. 上游调用方 (谁在调用/使用它，仅附 ~5 Token 业务微徽章)
   if (upstream.length > 0 && remainingChars > 200) {
     sliceMd += `\n## ⬆️ 上游调用方 (Dependents)\n`;
     for (const up of upstream) {
-      sliceMd += `* \`${up}\` (关系: 依赖当前目标文件)\n`;
+      const badge = options.includeBiz === false ? '' : getFileBizBadge(dir, up, { index: bizIndex });
+      sliceMd += `* \`${up}\`${badge} (关系: 依赖当前目标文件)\n`;
     }
   }
 

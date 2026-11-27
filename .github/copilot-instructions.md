@@ -7,7 +7,7 @@
 - **禁止废话刷屏**：严禁在聊天窗口输出超过 15 行的冗长设计方案或数百行伪代码。
 - **单文件真理源与任务分片**：总览计划与质量门禁写入 `.sansheng/TASK.md`（严格限制在 150 行以内，兼容根目录 `TASK.md`）；复杂多任务拆分为物理隔离分片 `.sansheng/tasks/TASK-xx.md`。
 - **极简 3 行 HUD 回显**：计划生成后，聊天框只允许回显 3 行进度看板（Wave 进度 + 门禁状态 + 下一步指示）。
-- **工具调用优先级**：优先调用已挂载的 `sansheng-liubu` MCP 工具（`sansheng_codebase_map`、`sansheng_task_status`、`sansheng_audit_plan`、`sansheng_recall`、`sansheng_dispatch_worker`、`sansheng_uat_gate`、`sansheng_archive`、`sansheng_sync_rules`、`sansheng_update`）；未挂载 MCP 时无缝降级为终端 `sansheng` CLI。
+- **工具调用优先级**：优先调用已挂载的 `sansheng-liubu` MCP 工具（`sansheng_codebase_map`、`sansheng_why`、`sansheng_biz`、`sansheng_task_status`、`sansheng_audit_plan`、`sansheng_recall`、`sansheng_dispatch_worker`、`sansheng_uat_gate`、`sansheng_archive`、`sansheng_sync_rules`、`sansheng_update`）；未挂载 MCP 时无缝降级为终端 `sansheng` CLI。
 
 ## 2. 中书省 ALIGN 对齐法则
 - 遇到新需求时，前置检索《永乐大典》避坑规范，并通过 `sansheng_codebase_map` / `.sansheng/codebase_map.md` 感知代码骨架。
@@ -25,7 +25,7 @@
 - 严格进行 Task 与 UAT 双向 100% 需求覆盖率对账（无源不立、无漏不结）。
 
 ## 4. 尚书省 & 六部 RUN 执行法则
-- **微切片纯净执行**：通过 `sansheng_recall` 按 ID（`TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx`）分页按需召回上下文，向工兵仅投喂当前 Task 绑定的 `[REQ-xx]` 与 `[RULE-xx]`。
+- **微切片纯净执行与业务红线护栏**：通过 `sansheng_recall` 按 ID（`BIZ-xxx` / `TASK-xx` / `REQ-xx` / `UAT-xx` / `JOB-xx`）按需召回上下文；修改老代码前先通过 `sansheng_why` 或 `sansheng_codebase_map({ focus })` 查看历史业务红线，严禁擅自删除带 `@biz`/`@why` 标记的特殊逻辑；新增反直觉特殊逻辑时仅写 1 行 `// @biz BIZ-xxx: 原因`（常规代码零注释侵入）。
 - **测试断言守门与 Diff 对账**：编码前先确认/编写边界单测断言，单测全绿方可交付；提交前核对 Git Diff，杜绝伪实现与空 TODO。
 - **物理级节流与异步工兵**：排版交给 `dotnet format` / `biome` / `prettier`；耗时任务可用 `sansheng_dispatch_worker` 后台非阻塞执行。
 - **四级权限保护**：高危操作（`rm -rf` / `git push -f` / 删库 / 越界写入）必须先请求人工明确确认。
